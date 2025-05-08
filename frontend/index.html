@@ -198,8 +198,11 @@
                         <li class="nav-item" role="presentation">
                             <button class="nav-link" id="manual-tab" data-bs-toggle="tab" data-bs-target="#manual-fix" type="button" role="tab">手动修正SQL</button>
                         </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="optimize-tab" data-bs-toggle="tab" data-bs-target="#optimize-fix" type="button" role="tab">结果不符时的SQL优化</button>
+                        </li>
                     </ul>
-                    <div class="tab-content border border-top-0 rounded-bottom p-4 bg-light" id="fixTabContent" style="min-height:220px;">
+                    <div class="tab-content border border-top-0 rounded-bottom p-4 bg-light" id="fixTabContent" style="min-height:260px;">
                         <!-- 自动修正 -->
                         <div class="tab-pane fade show active" id="auto-fix" role="tabpanel">
                             <div class="mb-3">
@@ -221,6 +224,20 @@
                             <button class="btn btn-primary" id="manual-fix-btn">修正SQL</button>
                             <span id="manual-fix-loading" style="display:none; margin-left:10px; color:#1976d2; font-weight:bold;">修正中...</span>
                             <div id="manual-fix-result" class="mt-3"></div>
+                        </div>
+                        <!-- 结果不符时的SQL优化 -->
+                        <div class="tab-pane fade" id="optimize-fix" role="tabpanel">
+                            <div class="mb-3">
+                                <label for="opt-sql" class="form-label">原始SQL：</label>
+                                <textarea class="form-control mb-2" id="opt-sql" rows="3" placeholder="自动填充或粘贴原始SQL"></textarea>
+                                <label for="opt-result" class="form-label">实际查询结果（可选）：</label>
+                                <textarea class="form-control mb-2" id="opt-result" rows="3" placeholder="可粘贴部分查询结果或留空"></textarea>
+                                <label for="opt-intent" class="form-label">真实需求描述（必填）：</label>
+                                <textarea class="form-control" id="opt-intent" rows="3" placeholder="请描述你想要的结果，例如：每个省份的用户数"></textarea>
+                            </div>
+                            <button class="btn btn-primary" id="optimize-fix-btn">优化SQL</button>
+                            <span id="optimize-fix-loading" style="display:none; margin-left:10px; color:#1976d2; font-weight:bold;">优化中...</span>
+                            <div id="optimize-fix-result" class="mt-3"></div>
                         </div>
                     </div>
                     <!-- 结束SQL修正Tab区 -->
@@ -488,6 +505,52 @@ function copyManualFixedSQL() {
     const sql = document.getElementById('manual-fixed-sql').innerText;
     navigator.clipboard.writeText(sql);
     showToast('修正后的SQL已复制！');
+}
+// 结果不符时的SQL优化Tab功能
+const optimizeFixBtn = document.getElementById('optimize-fix-btn');
+const optimizeFixLoading = document.getElementById('optimize-fix-loading');
+const optimizeFixResult = document.getElementById('optimize-fix-result');
+const optSqlTextarea = document.getElementById('opt-sql');
+// 自动填充原始SQL为最近一次生成的SQL
+function fillOptSqlWithLast() {
+    const sqlOutput = document.getElementById('sql-output');
+    if (sqlOutput) {
+        optSqlTextarea.value = sqlOutput.innerText;
+    }
+}
+document.getElementById('optimize-tab').addEventListener('click', fillOptSqlWithLast);
+optimizeFixBtn.onclick = async function() {
+    const sql = optSqlTextarea.value.trim();
+    const result = document.getElementById('opt-result').value.trim();
+    const intent = document.getElementById('opt-intent').value.trim();
+    if (!sql) { showToast('请填写原始SQL'); return; }
+    if (!intent) { showToast('请填写真实需求描述'); return; }
+    optimizeFixLoading.style.display = 'inline';
+    optimizeFixBtn.disabled = true;
+    optimizeFixResult.innerHTML = '';
+    try {
+        const formData = new FormData();
+        formData.append('original_sql', sql);
+        formData.append('query_result', result);
+        formData.append('user_intent', intent);
+        const res = await fetch('/api/optimize_sql_with_rag', {method:'POST', body:formData});
+        const data = await res.json();
+        if (data.success) {
+            optimizeFixResult.innerHTML = `<label class='form-label'>优化后的SQL：</label><pre id='optimize-fixed-sql' class='bg-white p-2 rounded'>${data.optimized_sql}</pre><button class='btn btn-outline-secondary btn-sm' onclick='copyOptimizeFixedSQL()'>一键复制</button>`;
+        } else {
+            optimizeFixResult.innerHTML = `<span style='color:red;'>${data.msg}</span>`;
+        }
+    } catch (e) {
+        optimizeFixResult.innerHTML = '<span style="color:red;">请求失败，请重试。</span>';
+    } finally {
+        optimizeFixLoading.style.display = 'none';
+        optimizeFixBtn.disabled = false;
+    }
+};
+function copyOptimizeFixedSQL() {
+    const sql = document.getElementById('optimize-fixed-sql').innerText;
+    navigator.clipboard.writeText(sql);
+    showToast('优化后的SQL已复制！');
 }
 </script>
 </body>

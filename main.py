@@ -195,6 +195,41 @@ async def delete_feedback(time: str = Form(...)):
     except Exception as e:
         return {"success": False, "msg": f"撤销失败: {e}"}
 
+@app.post("/api/optimize_sql_with_rag")
+async def optimize_sql_with_rag(
+    user_intent: str = Form(...),
+    original_sql: str = Form(...),
+    query_result: str = Form("")
+):
+    """结果不符时的SQL优化，自动拼接RAG上下文"""
+    try:
+        # 获取RAG上下文（DDL、文档、历史SQL等）
+        rag_context = vn.get_context(user_intent)
+        prompt = f"""
+你是SQL优化专家。下面有数据库结构、字段说明、历史示例、原始SQL、实际查询结果和用户的真实需求描述。
+请根据所有信息，优化SQL，使其能正确返回用户想要的结果。
+【数据库结构和字段说明】
+{rag_context}
+
+【原始SQL】
+{original_sql}
+
+【实际查询结果】
+{query_result or '（无）'}
+
+【用户真实需求描述】
+{user_intent}
+只输出优化后的SQL，不要解释。
+"""
+        response = client.chat.completions.create(
+            model="grok-3-beta",
+            messages=[{"role": "user", "content": prompt}]
+        )
+        optimized_sql = response.choices[0].message.content.strip()
+        return {"success": True, "optimized_sql": optimized_sql}
+    except Exception as e:
+        return {"success": False, "msg": f"SQL优化失败: {e}"}
+
 # ------------------ 启动入口 ------------------
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=5173, reload=True) 
