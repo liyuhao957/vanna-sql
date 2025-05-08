@@ -1,0 +1,55 @@
+[
+  {
+    "type": "宽表分区过滤",
+    "tables": [
+      "large_table",
+      "fact_table"
+    ],
+    "partition_field": "timed"
+  },
+  {
+    "type": "大表ORDER BY限制",
+    "tables": [
+      "large_table"
+    ],
+    "forbid_order_by": true
+  },
+  {
+    "type": "禁止全表扫描",
+    "tables": [
+      "large_table",
+      "fact_table"
+    ]
+  },
+  {
+    "type": "JOIN分区字段",
+    "tables": [
+      "large_table"
+    ],
+    "partition_field": "timed"
+  },
+  {
+    "type": "窗口函数推荐",
+    "other": "ROW_NUMBER() OVER(), DENSE_RANK() OVER(), LEAD(), LAG()"
+  },
+  {
+    "type": "CTE推荐",
+    "other": "WITH temp_table AS (SELECT ... FROM ...)"
+  },
+  {
+    "type": "复杂查询优化",
+    "other": "物化视图、合适JOIN、索引、CBO优化、执行计划优化"
+  },
+  {
+    "type": "JOIN顺序优化",
+    "other": "大表做左表，小表做Hash表"
+  },
+  {
+    "type": "行转列推荐",
+    "other": "Lateral Join"
+  },
+  {
+    "type": "分页优化",
+    "other": "OFFSET分页"
+  }
+]

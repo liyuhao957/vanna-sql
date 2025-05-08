@@ -8,6 +8,7 @@ import uvicorn
 import shutil
 import json
 import datetime
+import threading
 
 # 本地私有化Vanna初始化
 from vanna.chromadb.chromadb_vector import ChromaDB_VectorStore
@@ -229,6 +230,128 @@ async def optimize_sql_with_rag(
         return {"success": True, "optimized_sql": optimized_sql}
     except Exception as e:
         return {"success": False, "msg": f"SQL优化失败: {e}"}
+
+RULES_FILE = "rules.json"
+RULES_LOCK = threading.Lock()
+
+def load_rules():
+    if not os.path.exists(RULES_FILE):
+        # 初始化最佳实践规则
+        default_rules = [
+            {"type": "宽表分区过滤", "tables": ["large_table", "fact_table"], "partition_field": "timed"},
+            {"type": "大表ORDER BY限制", "tables": ["large_table"], "forbid_order_by": True},
+            {"type": "禁止全表扫描", "tables": ["large_table", "fact_table"]},
+            {"type": "JOIN分区字段", "tables": ["large_table"], "partition_field": "timed"},
+            {"type": "窗口函数推荐", "other": "ROW_NUMBER() OVER(), DENSE_RANK() OVER(), LEAD(), LAG()"},
+            {"type": "CTE推荐", "other": "WITH temp_table AS (SELECT ... FROM ...)"},
+            {"type": "复杂查询优化", "other": "物化视图、合适JOIN、索引、CBO优化、执行计划优化"},
+            {"type": "JOIN顺序优化", "other": "大表做左表，小表做Hash表"},
+            {"type": "行转列推荐", "other": "Lateral Join"},
+            {"type": "分页优化", "other": "OFFSET分页"}
+        ]
+        save_rules(default_rules)
+        return default_rules
+    with open(RULES_FILE, "r", encoding="utf-8") as f:
+        try:
+            rules = json.load(f)
+            if not rules:
+                # 文件存在但为空，也写入默认规则
+                default_rules = [
+                    {"type": "宽表分区过滤", "tables": ["large_table", "fact_table"], "partition_field": "timed"},
+                    {"type": "大表ORDER BY限制", "tables": ["large_table"], "forbid_order_by": True},
+                    {"type": "禁止全表扫描", "tables": ["large_table", "fact_table"]},
+                    {"type": "JOIN分区字段", "tables": ["large_table"], "partition_field": "timed"},
+                    {"type": "窗口函数推荐", "other": "ROW_NUMBER() OVER(), DENSE_RANK() OVER(), LEAD(), LAG()"},
+                    {"type": "CTE推荐", "other": "WITH temp_table AS (SELECT ... FROM ...)"},
+                    {"type": "复杂查询优化", "other": "物化视图、合适JOIN、索引、CBO优化、执行计划优化"},
+                    {"type": "JOIN顺序优化", "other": "大表做左表，小表做Hash表"},
+                    {"type": "行转列推荐", "other": "Lateral Join"},
+                    {"type": "分页优化", "other": "OFFSET分页"}
+                ]
+                save_rules(default_rules)
+                return default_rules
+            return rules
+        except Exception:
+            # 文件损坏等异常也写入默认规则
+            default_rules = [
+                {"type": "宽表分区过滤", "tables": ["large_table", "fact_table"], "partition_field": "timed"},
+                {"type": "大表ORDER BY限制", "tables": ["large_table"], "forbid_order_by": True},
+                {"type": "禁止全表扫描", "tables": ["large_table", "fact_table"]},
+                {"type": "JOIN分区字段", "tables": ["large_table"], "partition_field": "timed"},
+                {"type": "窗口函数推荐", "other": "ROW_NUMBER() OVER(), DENSE_RANK() OVER(), LEAD(), LAG()"},
+                {"type": "CTE推荐", "other": "WITH temp_table AS (SELECT ... FROM ...)"},
+                {"type": "复杂查询优化", "other": "物化视图、合适JOIN、索引、CBO优化、执行计划优化"},
+                {"type": "JOIN顺序优化", "other": "大表做左表，小表做Hash表"},
+                {"type": "行转列推荐", "other": "Lateral Join"},
+                {"type": "分页优化", "other": "OFFSET分页"}
+            ]
+            save_rules(default_rules)
+            return default_rules
+
+def save_rules(rules):
+    with RULES_LOCK:
+        with open(RULES_FILE, "w", encoding="utf-8") as f:
+            json.dump(rules, f, ensure_ascii=False, indent=2)
+
+@app.get("/api/rules")
+def get_rules():
+    return load_rules()
+
+@app.post("/api/rules")
+async def add_rule(
+    rule_type: str = Form(...),
+    tables: str = Form(""),
+    partition_field: str = Form(""),
+    forbid_order_by: str = Form(""),
+    other: str = Form("")
+):
+    rules = load_rules()
+    rule = {"type": rule_type}
+    if tables:
+        rule["tables"] = [t.strip() for t in tables.split(",") if t.strip()]
+    if partition_field:
+        rule["partition_field"] = partition_field.strip()
+    if forbid_order_by:
+        rule["forbid_order_by"] = forbid_order_by.lower() == "true"
+    if other:
+        rule["other"] = other
+    rules.append(rule)
+    save_rules(rules)
+    return {"success": True}
+
+@app.put("/api/rules")
+async def edit_rule(
+    idx: int = Form(...),
+    rule_type: str = Form(...),
+    tables: str = Form(""),
+    partition_field: str = Form(""),
+    forbid_order_by: str = Form(""),
+    other: str = Form("")
+):
+    rules = load_rules()
+    if idx < 0 or idx >= len(rules):
+        return {"success": False, "msg": "规则索引无效"}
+    rule = {"type": rule_type}
+    if tables:
+        rule["tables"] = [t.strip() for t in tables.split(",") if t.strip()]
+    if partition_field:
+        rule["partition_field"] = partition_field.strip()
+    if forbid_order_by:
+        rule["forbid_order_by"] = forbid_order_by.lower() == "true"
+    if other:
+        rule["other"] = other
+    rules[idx] = rule
+    save_rules(rules)
+    return {"success": True}
+
+@app.delete("/api/rules")
+async def delete_rule(idx: int = Form(...)):
+    rules = load_rules()
+    if idx < 0 or idx >= len(rules):
+        return {"success": False, "msg": "规则索引无效"}
+    rules.pop(idx)
+    save_rules(rules)
+    return {"success": True}
 
 # ------------------ 启动入口 ------------------
 if __name__ == "__main__":
