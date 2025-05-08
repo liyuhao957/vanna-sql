@@ -22,4 +22,18 @@ pre {
 }
 .btn[disabled] {
     opacity: 0.6;
+}
+
+/* 允许Tab横向滚动，防止换行 */
+.nav-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap !important;
+}
+.nav-tabs .nav-item {
+    min-width: 120px;
+}
+.nav-tabs .nav-link {
+    font-size: 0.98rem;
+    padding-left: 10px;
+    padding-right: 10px;
 } 
