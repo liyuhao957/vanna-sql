@@ -36,4 +36,87 @@ pre {
     font-size: 0.98rem;
     padding-left: 10px;
     padding-right: 10px;
+}
+
+/* 规则管理区卡片式美化 */
+.rules-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 480px;
+  overflow-y: auto;
+  padding: 8px;
+  background: #f7f8fa;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+}
+
+.rule-card {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: box-shadow 0.2s;
+}
+
+.rule-card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+}
+
+.rule-type {
+  font-weight: bold;
+  color: #3a7afe;
+  margin-right: 16px;
+  min-width: 80px;
+}
+
+.rule-desc {
+  flex: 1;
+  color: #333;
+  font-size: 15px;
+  margin-right: 16px;
+  word-break: break-all;
+}
+
+.rule-actions button {
+  background: #3a7afe;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  padding: 6px 14px;
+  margin-left: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+  font-size: 14px;
+}
+
+.rule-actions button:hover {
+  background: #155ecb;
+}
+
+.rules-section {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #f7fafd;
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(25,118,210,0.06);
+  padding: 32px 0 24px 0;
+}
+.rules-section > h4 {
+  width: 90%;
+  max-width: 1200px;
+  text-align: left;
+}
+.rules-section > .mb-3, .rules-section > hr, #rules-list {
+  width: 90%;
+  max-width: 1200px;
+}
+#rules-list {
+  margin-top: 18px;
 } 
