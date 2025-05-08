@@ -1,0 +1,323 @@
+事件和属性绑定关系说明：
+
+# 全局属性（所有事件共有）
+以下属性是所有事件类型(imp、clk、cls、send2等)共有的：
+- launchId: 吊起id (string)
+- uniqueId: 设备标识，用于AB测试流量染色 (string)
+- userId: 用户id (string)
+- sourceCid: 源头cid (string)
+- channelId: 渠道id (string)
+- packageName: 包名 (string)
+- brand: 厂商品牌 (string)
+- PCCSDKVersion: PCC_SDK版本 (string)
+- traceId: 媒体事件跟踪标识 (string)
+- accountId: 账户 (string)
+- ggBodyLevel1: 广告层级1 (string)
+- ggBodyLevel2: 广告层级2 (string)
+- clientTime: 设备当前时间戳 (bigint)
+- onceStayTime: 当次累计使用时长 (int)
+- event: 事件类型，如imp、clk、cls、send2等 (string)
+- timedt: 事件发生的时间 (timestamp)
+
+# 1. 策略配置事件(config)
+config事件表示策略配置上报，在策略命中、下发广告配置时上报，由服务端处理，有以下特有属性：
+- clientParams: 客户端透传信息 (object)
+- securityId: 安全策略id (string)
+- securityName: 安全策略名称 (string)
+- securityParams: 安全策略参数详情 (object)
+- sceneV4Id: V4场景策略id (string)
+- sceneV4Name: V4场景策略名称 (string)
+- sceneV4AB: V4场景策略的AB分组 (string)
+- sceneV4Params: V4场景策略参数详情 (object)
+- userGroupId: 当前用户集合id (string)
+- userGroupName: 当前用户集合名称 (string)
+- userGroupParams: 用户分层详情 (object)
+- mediaId: 我方媒体（应用）id (string)
+- UA: 用户ua (string)
+- IP: 用户ip (string)
+- cityName: 城市名 (string)
+- regionName: 省名称 (string)
+
+# 2. 信息事件(info)
+info事件包含设备、应用和环境信息，有以下特有属性：
+- versionName: 快应用本身的版本名称 (string)
+- versionCode: 快应用本身的版本号 (number)
+- packageName: 包名 (string)
+- brand: 厂商品牌 (string)
+- brand2: 设备信息中的品牌 (string)
+- PCCSDKVersion: PCC_SDK版本 (string)
+- manufacturer: 设备生产商 (string)
+- model: 设备型号 (string)
+- osType: 操作系统名称 (string)
+- osVersionCode: 操作系统版本号 (number)
+- osVersionName: 操作系统版本名称 (string)
+- platformVersionCode: 运行平台版本号 (number)
+- platformVersionCode2: 运行平台版本号（完整） (number)
+- platformVersionName: 运行平台版本名称 (string)
+- screenWidth: 屏幕宽 (number)
+- screenHeight: 屏幕高 (number)
+- deviceType: 设备类型 (string)
+- userId: 用户id (string)
+- qaOAIDMD5: OAID的md5 (string)
+- qaDeviceIdMD5: deviceId的md5 (string)
+- qaAdvertisingIdMD5: advertisingId的md5 (string)
+- idsErrInfo: ids获取失败的错误信息 (string)
+- networkType: 网络类型 (string)
+- sourcePackageName: 来路包名 (string)
+- sourceType: 调起方式 (string)
+- sourceExtra: 来路其他参数信息 (object)
+- channelId: 渠道id (string)
+- traceId: 媒体事件跟踪标识 (string)
+- accountId: 账户 (string)
+- ggBodyLevel1: 广告层级1 (string)
+- ggBodyLevel2: 广告层级2 (string)
+- mediaSceneId: 投放场景 (string)
+- mediaSlotId: 投放广告位 (string)
+- sourceCid: 源头cid (string)
+- cidPath: 跳转cid路径 (string)
+- extraParams: 后端数据 (object)
+- pageId: 落地页ID (string)
+- tId: 播放时追加在URL上 (string)
+- lbId: 平台的流量号 (string)
+- launchAuto: 是否自动拉起 (string)
+- launchType: 拉起类型 (string)
+
+# 3. 广告请求事件(req2)
+req2事件表示广告请求，有以下特有属性：
+- reqId: 一次广告的唯一标识 (string)
+- userGroupId: 当前用户集合id (string)
+- sceneV4Id: V4场景策略id (string)
+- ggPlatform: 广告源 (string)
+- reqType: 请求方式 (number)
+- ggId: 广告代码位id (string)
+- ggIdType: 广告代码位类型 (string)
+
+# 4. 广告发送事件(send2)
+send2事件表示广告发送响应，有以下特有属性：
+- reqId: 一次广告的唯一标识 (string)
+- userGroupId: 当前用户集合id (string)
+- sceneV4Id: V4场景策略id (string)
+- ggId: 广告代码位id (string)
+- ggIdType: 广告代码位类型 (string)
+- ggParams: 广告参数 (object)
+- ggStatus: 广告下载状态 (string)
+- ggSource: 广告主 (string)
+- ggSourceType: 广告主类型 (string)
+- reqType: 请求方式 (number)
+- ggPlatform: 广告源 (string)
+- poolType: 入池位置 (string)
+- errCode: 错误码 (number)
+- errMsg: 错误信息 (string)
+- ggTrueStyle: 实际广告样式 (number)
+- ggPrePrice: 预估ecpm (number)
+- ggProPrice: 保价信息 (number)
+- bidPrice: bidding出价 (number)
+
+# 5. 广告曝光事件(imp)
+imp事件表示广告曝光，物理广告位曝光时上报，有以下特有属性：
+- reqId: 一次广告的唯一标识 (string)
+- userGroupId: 当前用户集合id (string)
+- sceneV4Id: V4场景策略id (string)
+- ggId: 广告代码位id (string)
+- ggIdType: 广告代码位类型 (string)
+- ggParams: 广告参数 (object)
+- ggSource: 广告主 (string)
+- ggSourceType: 广告主类型 (string)
+- ggPlatform: 广告源 (string)
+- reqType: 请求方式 (number)
+- ggTrueStyle: 实际广告样式 (number)
+- impPosition: 曝光位置 (string)
+- impV: CTR优化执行状态 (int)
+- impT: CTR优化执行方式 (int)
+- impW: 优化方式（执行方案） (string)
+- isAct: 是否激活物料 (boolean)
+- layerId: 图层样式id (string)
+- layerBackgroundId: 背景样式id (string)
+- thenPoolCount: 出缓存池后，池内剩余物料数 (int)
+- poolType: 出池位置 (string)
+- layerLocation: 图层UI的位置 (string)
+- winSource: 胜出价格来源 (string)
+- winPrice: 广告价格 (number)
+- targetCtr: ggid目标点击率 (float)
+- currentCtr: 实时ctr (float)
+- impDiff: 曝光差异 (float)
+- reportAdClick: 区分honor曝光方式 (string)
+
+# 6. 广告点击事件(clk)
+clk事件表示广告点击，物理广告位点击时上报，有以下特有属性：
+- reqId: 一次广告的唯一标识 (string)
+- userGroupId: 当前用户集合id (string)
+- sceneV4Id: V4场景策略id (string)
+- ggId: 广告代码位id (string)
+- ggIdType: 广告代码位类型 (string)
+- ggParams: 广告参数 (object)
+- ggSource: 广告主 (string)
+- ggSourceType: 广告主类型 (string)
+- reqType: 请求方式 (number)
+- ggPlatform: 广告源 (string)
+- clkV: 点击形式 (string)
+- isAct: 是否激活物料 (boolean)
+- layerId: 图层样式id (string)
+- reportAdClick: reportAdClick触发的点击 (string)
+- clickInfo: hw模板广告点击详情 (object)
+- clkCount: 同一次广告曝光第几次被点击 (string)
+
+# 7. 广告错误事件(err)
+err事件表示广告请求或展示过程中发生的错误，有以下特有属性：
+- reqId: 物理广告位请求标识 (string)
+- userGroupId: 当前用户集合id (string)
+- sceneV4Id: V4场景策略id (string)
+- ggId: 广告代码位id (string)
+- errCode: 错误码 (number)
+- errMsg: 错误信息 (string)
+
+# 8. 广告关闭事件(cls)
+cls事件表示广告被关闭，有以下特有属性：
+- reqId: 一次广告的唯一标识 (string)
+- userGroupId: 当前用户集合id (string)
+- sceneV4Id: V4场景策略id (string)
+- ggId: 广告代码位id (string)
+- isEnded: 激励视频是否是在完整观看的情况下被关闭的 (boolean)
+- clsType: 关闭类型 (string)
+
+# 9. 应用启动事件(appLaunch)
+appLaunch事件表示应用启动，有以下特有属性：
+- launchId: 吊起的唯一标识 (string)
+
+# 10. 页面查看事件(pageview)
+pageview事件表示用户查看页面，有以下特有属性：
+- page: 页面名 (string)
+
+# 11. 页面离开事件(pageLeave)
+pageLeave事件表示用户离开页面，有以下特有属性：
+- page: 页面名 (string)
+
+# 12. 应用查看事件(appView)
+appView事件表示用户查看应用，无特有属性。
+
+# 13. 应用离开事件(appLeave)
+appLeave事件表示用户离开应用，无特有属性。
+
+# 14. 应用错误事件(appError)
+appError事件表示应用发生错误，有以下特有属性：
+- stack: 错误栈 (string)
+
+# 15. 前往系统设置事件(goSet)
+goSet事件表示点击前往手机系统"设置"时上报，无特有属性。
+
+# 16. 点击设置入口事件(clickSetEntry)
+clickSetEntry事件表示点击设置入口时上报，无特有属性。
+
+# 17. 应用提醒计时开始事件(setPullBackTimer)
+setPullBackTimer事件表示应用提醒计时开始时上报，无特有属性。
+
+# 18. 应用提醒尝试拉回事件(realPullBack)
+realPullBack事件表示应用提醒计时结束，尝试拉回时上报，有以下特有属性：
+- way: 应用提醒的方式 (string) - 可能的值包括api5、api6、bridge4、gg3、gg5
+
+# 19. 提前返回关闭提醒事件(offPullBackTimer)
+offPullBackTimer事件表示提前返回关闭提醒计时器时上报，无特有属性。
+
+# 20. 成功提醒事件(successPullBack)
+successPullBack事件表示成功提醒，有以下特有属性：
+- way: 应用提醒的方式 (string)
+
+# 21. 点击投诉入口事件(clickComplain)
+clickComplain事件表示点击投诉入口时上报，有以下特有属性：
+- position: 位置 (string)
+- qaOAIDMD5: qaOAIDMD5，同info中的该字段 (string)
+
+# 22. 点击侧边栏帮助事件(clickSidebarHelp)
+clickSidebarHelp事件表示点击侧边栏-帮助时上报，有以下特有属性：
+- qaOAIDMD5: qaOAIDMD5，同info中的该字段 (string)
+
+# 23. 投诉后永久退出事件(complainQuit)
+complainQuit事件表示点击「永久退出」或倒计时结束后自动退出时上报，有以下特有属性：
+- quitType: 永久退出的方式 (string)
+- qaOAIDMD5: qaOAIDMD5，同info中的该字段 (string)
+
+# 24. 投诉后继续使用事件(complainContinue)
+complainContinue事件表示点击退出弹窗的「继续使用」or「X」时上报，有以下特有属性：
+- continueType: 回到继续使用的方式 (string)
+- qaOAIDMD5: qaOAIDMD5，同info中的该字段 (string)
+
+# 25. 点击在线客服事件(clickOnlineService)
+clickOnlineService事件表示点击接入在线客服时上报，有以下特有属性：
+- qaOAIDMD5: qaOAIDMD5，同info中的该字段 (string)
+
+# 26. 点击投诉电话事件(clickHotline)
+clickHotline事件表示点击投诉电话时上报，有以下特有属性：
+- qaOAIDMD5: qaOAIDMD5，同info中的该字段 (string)
+
+# 27. 提交投诉事件(submitComplain)
+submitComplain事件表示提交投诉时上报，有以下特有属性：
+- reason: 选择的原因 (string)
+- detail: 具体说明 (string)
+- contact: 联系方式 (string)
+- qaOAIDMD5: qaOAIDMD5，同info中的该字段 (string)
+
+# 28. 选择投诉一级类型事件(complain1)
+complain1事件表示选择投诉一级类型时上报，有以下特有属性：
+- complainReason: 投诉原因 (string)
+- qaOAIDMD5: qaOAIDMD5，同info中的该字段 (string)
+
+# 29. 选择投诉二级类型事件(complain2)
+complain2事件表示选择投诉二级类型时上报，有以下特有属性：
+- complainReason: 投诉原因 (string)
+- qaOAIDMD5: qaOAIDMD5，同info中的该字段 (string)
+
+# 30. 点击提交反馈事件(complain3)
+complain3事件表示点击「提交反馈」时上报，有以下特有属性：
+- complainReason: 投诉原因 (string)
+- complainDetail: 具体说明 (string)
+- complainContact: 联系方式 (string)
+- qaOAIDMD5: qaOAIDMD5，同info中的该字段 (string)
+
+# 事件间关系
+- imp、clk、cls和send2事件通过reqId关联，表示同一次广告请求的不同阶段
+- 一个reqId可能对应一次imp，多次clk，和一次cls
+- 当分析点击率(CTR)时，应统计imp和clk事件的比率
+- 分析广告效果时，常用isAct(是否激活)和isD1Act(是否次日留存激活)指标
+- appLaunch、pageview、pageLeave、appView和appLeave事件可用于分析用户在应用内的行为路径 
+- setPullBackTimer、realPullBack、offPullBackTimer和successPullBack事件用于分析应用提醒功能的效果
+- clickComplain、submitComplain、complain1、complain2和complain3事件可以用于分析用户投诉路径和原因
+
+## 用户完整行为路径
+- 用户会话路径: appLaunch → appView → pageview → {各类交互事件} → pageLeave → appLeave，通过launchId关联同一会话
+- 用户停留时间: 可通过计算appLaunch和appLeave之间的时间差获得，或计算pageview和pageLeave之间的时间差获得页面停留时间
+- 页面切换频率: 通过分析同一launchId下pageview和pageLeave事件的频次可衡量用户活跃度
+- 会话质量评估: 单次会话中的广告互动次数(imp、clk)与页面查看数量的比率可评估会话质量
+
+## 广告展示关联分析
+- 广告请求漏斗: req2 → send2 → imp → clk → cls，各阶段通过reqId关联，可计算转化率
+- 广告质量评估: 通过比较不同reqId对应的cls.isEnded=true的比率，评估广告内容质量
+- 广告类型效果: 分析不同ggIdType的req2→clk转化率，评估不同广告类型效果
+- 广告投放优化: 通过分析sceneV4Id与imp、clk事件的关联，优化不同场景的广告投放策略
+- 广告收益评估: 通过分析winPrice与广告互动(imp、clk)的关系，评估收益与用户体验平衡
+
+## 投诉流程分析
+- 投诉完整路径: clickComplain → complain1 → complain2 → complain3 → submitComplain → {complainQuit/complainContinue}
+- 投诉原因分类: 通过complainReason字段分析投诉热点，与reqId关联可追溯到具体广告
+- 投诉转化率: 计算clickComplain到submitComplain的转化率，分析投诉流失点
+- 投诉后行为: 分析complainQuit和complainContinue的比例，评估投诉对用户留存的影响
+- 投诉源分析: 将clickComplain与之前的imp事件关联，识别引发投诉的广告特征
+- 客服效果分析: 通过分析clickOnlineService和clickHotline后的用户行为，评估客服解决效果
+
+## 设置与提醒功能关联
+- 设置访问路径: clickSetEntry → goSet，分析用户对设置的访问频率与操作系统版本的关系
+- 提醒效果评估: setPullBackTimer → {offPullBackTimer/realPullBack} → {successPullBack/失败}，分析不同way的拉回成功率
+- 提醒时机优化: 分析setPullBackTimer与用户appLeave时间的关系，优化提醒触发时机
+- 系统设置影响: 分析goSet后用户行为变化，评估系统设置对应用使用的影响
+
+## 错误与异常分析
+- 错误溯源: appError事件与之前的用户操作序列关联，识别可能导致错误的操作路径
+- 广告错误分析: 将err事件与req2、send2关联，分析广告加载失败的原因和影响
+- 错误对留存影响: 分析appError后用户的appLaunch频率变化，评估错误对留存的影响
+- 设备兼容性: 通过brand、model与appError的关联，分析设备兼容性问题
+
+## 跨事件分析方法
+- 会话归因: 使用launchId将同一会话内的所有事件关联起来进行整体分析
+- 用户画像构建: 通过userid关联用户的所有事件，构建长期行为画像
+- 广告效果评估: 使用reqId将广告相关事件(req2、send2、imp、clk、cls)关联为完整链路
+- 投诉原因归因: 将submitComplain的投诉与之前的广告展示(imp)通过时间窗口和用户id关联
+- A/B测试分析: 通过uniqueId分组分析不同功能、界面对用户行为的影响

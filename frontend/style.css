@@ -1,0 +1,25 @@
+body {
+    background: #f8f9fa;
+}
+.card {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+.card-header {
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+#sql-output {
+    font-family: 'Fira Mono', 'Consolas', 'Menlo', monospace;
+    font-size: 1rem;
+    min-height: 2.5em;
+    word-break: break-all;
+}
+#training-data-list {
+    font-size: 0.95em;
+}
+pre {
+    margin-bottom: 0;
+}
+.btn[disabled] {
+    opacity: 0.6;
+} 

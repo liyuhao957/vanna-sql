@@ -1,0 +1,38 @@
+# 常用SQL查询模板
+
+## JOIN查询
+问题: 查询用户配置和事件信息
+答案:
+%%sql
+SELECT 
+    e.launchId,
+    c.regionName,
+    c.IP
+FROM ods_RealTime_pcc_quickapp_events e
+JOIN ods_RealTime_pcc_quickapp_events c
+    ON e.launchId = c.launchId
+    AND c.event = 'config'
+WHERE e.timed = CURRENT_DATE()
+    AND e.event = '事件名'
+    AND e.brand = '品牌名';
+
+## WITH子句
+问题: 复杂统计计算
+答案:
+%%sql
+WITH daily_stats AS (
+    SELECT 
+        timed,
+        COUNT(DISTINCT launchId) as launch_count,
+        COUNT(DISTINCT userId) as user_count
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed >= DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY)
+    GROUP BY timed
+)
+SELECT 
+    timed,
+    launch_count,
+    user_count,
+    launch_count / user_count as avg_launches_per_user
+FROM daily_stats
+ORDER BY timed DESC; 

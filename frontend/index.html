@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vanna SQL 生成器</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/frontend/style.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #e8f0fe 0%, #e0f7fa 100%);
+            font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', Arial, sans-serif;
+        }
+        .container {
+            max-width: 1280px;
+            margin-top: 48px;
+        }
+        h2 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-align: center;
+            margin-bottom: 2.5rem;
+            color: #263159;
+            text-shadow: 0 2px 8px #e3eafc;
+        }
+        .main-flex {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 3.5rem;
+            margin-bottom: 2.5rem;
+        }
+        .card {
+            border-radius: 22px;
+            box-shadow: 0 8px 32px 0 rgba(60,72,88,0.13);
+            border: none;
+            background: #fff;
+            margin-bottom: 2rem;
+            min-width: 400px;
+            max-width: 520px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        .card-header {
+            border-radius: 22px 22px 0 0;
+            font-size: 1.18rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            background: linear-gradient(90deg, #1976d2 60%, #26c6da 100%);
+            color: #fff;
+            text-align: left;
+            padding: 1.1rem 1.5rem;
+        }
+        .card-body {
+            padding: 2rem 1.5rem 1.5rem 1.5rem;
+            flex: 1 1 auto;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+        }
+        .btn {
+            border-radius: 10px;
+            font-weight: 500;
+            font-size: 1.08rem;
+            transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+        }
+        .btn-outline-primary {
+            border-width: 2px;
+            color: #1976d2;
+            border-color: #1976d2;
+            background: #f4faff;
+        }
+        .btn-outline-primary:hover {
+            background: #1976d2;
+            color: #fff;
+            box-shadow: 0 2px 8px #1976d2a0;
+        }
+        .btn-primary {
+            background: #1976d2;
+            border-color: #1976d2;
+        }
+        .btn-primary:hover {
+            background: #1251a3;
+            border-color: #1251a3;
+        }
+        #training-data-list {
+            margin-top: 1.2rem;
+            min-height: 320px;
+            max-height: 540px;
+            overflow-y: auto;
+        }
+        .training-card {
+            position: relative;
+            background: #fafdff;
+            border-radius: 16px;
+            box-shadow: 0 2px 8px 0 rgba(60,72,88,0.08);
+            margin-bottom: 1.5rem;
+            padding: 0 0 0.5rem 0;
+            transition: box-shadow 0.2s;
+            border: 1.5px solid #e3eafc;
+        }
+        .training-card:hover {
+            box-shadow: 0 8px 24px 0 rgba(60,72,88,0.18);
+            border-color: #b6d0f7;
+        }
+        .training-card .btn-danger {
+            position: absolute;
+            top: 14px;
+            right: 20px;
+            z-index: 2;
+            float: none;
+            margin-top: 0;
+            padding: 0.28rem 1.1rem;
+            font-size: 1rem;
+            border-radius: 18px;
+            background: #e53935;
+            border: none;
+            font-weight: 600;
+            letter-spacing: 1px;
+            box-shadow: 0 2px 8px #e5393530;
+        }
+        .training-card .btn-danger:hover {
+            background: #b71c1c;
+            color: #fff;
+        }
+        .training-card .card-content {
+            padding: 1.3rem 1.3rem 0.7rem 1.3rem;
+            overflow-x: hidden;
+            word-break: break-all;
+            white-space: pre-line;
+            font-size: 1.08rem;
+            color: #263159;
+            line-height: 1.7;
+        }
+        .training-card b {
+            color: #1976d2;
+            font-weight: 700;
+        }
+        .training-card span {
+            color: #374151;
+        }
+        textarea.form-control {
+            font-size: 1.08rem;
+            line-height: 1.7;
+            min-height: 80px;
+            resize: vertical;
+        }
+        @media (max-width: 1200px) {
+            .container { max-width: 99vw; }
+            .main-flex { gap: 1.2rem; }
+        }
+        @media (max-width: 900px) {
+            .container { max-width: 100vw; }
+            .main-flex { flex-direction: column; align-items: stretch; gap: 2rem; }
+            .card { min-width: unset; max-width: 100vw; }
+        }
+    </style>
+</head>
+<body>
+<div class="container py-4">
+    <h2 class="mb-4 text-center">Vanna SQL 生成器
+        <button class="btn btn-outline-secondary btn-sm float-end" style="position:absolute;right:40px;top:32px;" onclick="showFeedbackHistory()">反馈历史</button>
+    </h2>
+    <div class="main-flex">
+        <div class="col-md-5">
+            <div class="card">
+                <div class="card-header bg-primary text-white">训练数据查看</div>
+                <div class="card-body">
+                    <button class="btn btn-outline-primary w-100 mb-2" onclick="loadTrainingData()">查看训练数据</button>
+                    <div id="training-data-list"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-7">
+            <div class="card">
+                <div class="card-header bg-success text-white">SQL生成</div>
+                <div class="card-body">
+                    <form id="sql-form" method="post">
+                        <div class="mb-3">
+                            <label for="question" class="form-label">请输入您的自然语言问题：</label>
+                            <textarea class="form-control mb-2" name="question" id="question" rows="5" required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary" id="generate-btn">生成SQL</button>
+                        <span id="loading-indicator" style="display:none; margin-left:10px; color:#007bff; font-weight:bold;">生成中...</span>
+                    </form>
+                    <div id="result" class="mt-4"></div>
+                    <div id="feedback-buttons" style="display:none; margin-top: 10px;">
+                        <button class="btn btn-success me-2" onclick="sendFeedback('correct')">结果正确</button>
+                        <button class="btn btn-danger" onclick="showCorrectionBox()">结果错误</button>
+                    </div>
+                    <!-- 错误修正弹窗 -->
+                    <div id="correction-modal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#fff; box-shadow:0 2px 16px #1976d2a0; border-radius:10px; padding:24px 28px; z-index:10000; min-width:320px;">
+                        <h5 style="margin-bottom:10px;">请修正SQL后提交：</h5>
+                        <textarea id="corrected-sql" class="form-control mb-3" rows="6"></textarea>
+                        <div class="text-end">
+                            <button class="btn btn-primary me-2" onclick="sendFeedback('incorrect')">提交修正</button>
+                            <button class="btn btn-secondary" onclick="closeCorrectionBox()">取消</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div id="toast" style="
+    display:none;
+    position: fixed;
+    bottom: 40px;
+    right: 40px;
+    min-width: 180px;
+    background: #1976d2;
+    color: #fff;
+    padding: 14px 28px;
+    border-radius: 8px;
+    box-shadow: 0 2px 12px #1976d2a0;
+    font-size: 1.08rem;
+    z-index: 9999;
+    text-align: center;
+    opacity: 0.95;
+    transition: opacity 0.3s;
+"></div>
+<!-- 反馈历史弹窗 -->
+<div id="feedback-history-modal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#fff; box-shadow:0 2px 16px #1976d2a0; border-radius:10px; padding:24px 28px; z-index:10001; min-width:520px; max-height:80vh; overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <h5 style="margin:0;">反馈历史</h5>
+        <button class="btn btn-sm btn-secondary" onclick="closeFeedbackHistory()">关闭</button>
+    </div>
+    <div id="feedback-history-list">加载中...</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// 训练数据提交相关代码已移除
+// 加载训练数据
+async function loadTrainingData() {
+    const list = document.getElementById('training-data-list');
+    list.innerHTML = '加载中...';
+    const res = await fetch('/api/training_data');
+    const data = await res.json();
+    if(data.success) {
+        if(data.data.length === 0) { list.innerHTML = '暂无训练数据'; return; }
+        list.innerHTML = data.data.map(item =>
+            `<div class='border rounded p-2 mb-1 small training-card'>
+                <button class='btn btn-sm btn-danger mt-1' onclick='deleteTrainingData("${item.id}")'>删除</button>
+                <div class='card-content'>
+                    <b>ID:</b> ${item.id || ''}<br>
+                    <b>类型:</b> ${item.training_data_type || ''}<br>
+                    <b>问题:</b> ${item.question || ''}<br>
+                    <b>SQL:</b> <span style='white-space:pre-line;'>${item.content || ''}</span><br>
+                </div>
+            </div>`
+        ).join('');
+    } else {
+        list.innerHTML = '加载失败：' + data.msg;
+    }
+}
+// 删除训练数据
+async function deleteTrainingData(id) {
+    if(!confirm('确定要删除这条训练数据吗？')) return;
+    const formData = new FormData();
+    formData.append('id', id);
+    const res = await fetch('/api/delete_training_data', {method:'POST', body:formData});
+    const data = await res.json();
+    alert(data.msg);
+    loadTrainingData();
+}
+// SQL生成
+// 只保留唯一的事件绑定
+
+document.addEventListener('DOMContentLoaded', function() {
+    loadTrainingData();
+    const form = document.getElementById('sql-form');
+    const loadingIndicator = document.getElementById('loading-indicator');
+    const resultDiv = document.getElementById('result');
+    const generateBtn = document.getElementById('generate-btn');
+
+    form.addEventListener('submit', async function(event) {
+        event.preventDefault();
+        loadingIndicator.style.display = 'inline';
+        generateBtn.disabled = true;
+        resultDiv.innerHTML = '';
+        document.getElementById('feedback-buttons').style.display = 'none';
+        const formData = new FormData(form);
+        try {
+            const response = await fetch('/api/generate_sql', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+            if (data.success) {
+                resultDiv.innerHTML = `<label class="form-label">生成的SQL：</label>
+                    <pre id="sql-output" class="bg-light p-2 rounded">${data.sql}</pre>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="copySQL()">一键复制</button>`;
+                document.getElementById('feedback-buttons').style.display = 'block';
+            } else {
+                resultDiv.innerHTML = `<span style="color:red;">${data.msg}</span>`;
+            }
+        } catch (error) {
+            resultDiv.innerHTML = '<span style="color:red;">请求失败，请重试。</span>';
+        } finally {
+            loadingIndicator.style.display = 'none';
+            generateBtn.disabled = false;
+        }
+    });
+});
+// 一键复制
+function copySQL() {
+    const sql = document.getElementById('sql-output').innerText;
+    navigator.clipboard.writeText(sql);
+    showToast('SQL已复制到剪贴板！');
+}
+
+function showToast(msg) {
+    const toast = document.getElementById('toast');
+    toast.innerText = msg;
+    toast.style.display = 'block';
+    toast.style.opacity = '0.95';
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => { toast.style.display = 'none'; }, 300);
+    }, 1500);
+}
+
+function sendFeedback(type) {
+    const question = document.getElementById('question').value;
+    let sql = document.getElementById('sql-output').innerText;
+    let feedback_type = type;
+    if (type === 'incorrect') {
+        sql = document.getElementById('corrected-sql').value;
+    }
+    fetch('/api/feedback', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({question, sql, feedback_type})
+    }).then(res => res.json()).then(data => {
+        showToast(data.msg || '反馈已保存，系统已学习');
+        closeCorrectionBox();
+        document.getElementById('feedback-buttons').style.display = 'none';
+    });
+}
+function showCorrectionBox() {
+    document.getElementById('correction-modal').style.display = 'block';
+    document.getElementById('corrected-sql').value = document.getElementById('sql-output').innerText;
+}
+function closeCorrectionBox() {
+    document.getElementById('correction-modal').style.display = 'none';
+}
+function showFeedbackHistory() {
+    const modal = document.getElementById('feedback-history-modal');
+    const listDiv = document.getElementById('feedback-history-list');
+    modal.style.display = 'block';
+    listDiv.innerHTML = '加载中...';
+    fetch('/api/feedback_history').then(res => res.json()).then(data => {
+        if (!data.success) {
+            listDiv.innerHTML = '<span style="color:red;">加载失败：'+data.msg+'</span>';
+            return;
+        }
+        if (!data.data || data.data.length === 0) {
+            listDiv.innerHTML = '暂无反馈记录';
+            return;
+        }
+        let html = `<table class='table table-bordered table-sm'><thead><tr><th>问题</th><th>SQL片段</th><th>类型</th><th>时间</th><th>操作</th></tr></thead><tbody>`;
+        data.data.forEach(item => {
+            html += `<tr>
+                <td style='max-width:180px;word-break:break-all;'>${item.question ? item.question : ''}</td>
+                <td style='max-width:260px;word-break:break-all;'><pre style='margin:0;font-size:0.95em;'>${item.sql ? item.sql : ''}</pre></td>
+                <td>${item.type || ''}</td>
+                <td style='font-size:0.95em;'>${item.time ? item.time.replace('T',' ').replace(/\..*$/, '') : ''}</td>
+                <td><button class='btn btn-sm btn-danger' onclick="deleteFeedback('${item.time}')">撤销</button></td>
+            </tr>`;
+        });
+        html += '</tbody></table>';
+        listDiv.innerHTML = html;
+    });
+}
+function closeFeedbackHistory() {
+    document.getElementById('feedback-history-modal').style.display = 'none';
+}
+function deleteFeedback(time) {
+    if (!confirm('确定要撤销这条反馈吗？此操作不可恢复。')) return;
+    fetch('/api/delete_feedback', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: new URLSearchParams({time})
+    }).then(res => res.json()).then(data => {
+        showToast(data.msg || '反馈已撤销');
+        showFeedbackHistory(); // 刷新列表
+    });
+}
+</script>
+</body>
+</html>

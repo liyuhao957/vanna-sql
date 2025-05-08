@@ -1,0 +1,2076 @@
+# SQL查询格式规范
+
+## 重要格式要求
+- 所有SQL查询必须以%%sql开头，然后紧跟实际SQL语句
+- 这确保SQL可以在Jupyter环境中直接执行
+- 格式示例: 
+  ```
+  问题: 查询示例
+  SQL: %%sql
+  SELECT * FROM table_name;
+  ```
+
+## 基本格式规则
+- SQL关键字大写（SELECT, FROM, WHERE等）
+- 字段名和表名小写
+- 使用缩进增强可读性
+- 每个主要子句另起一行
+- 复杂查询使用CTE (WITH语句)提高可读性
+
+下面是符合规范的SQL查询示例:
+
+问题: 找出错误率最高的广告类型
+SQL: %%sql
+SELECT 
+    ggIdType,
+    COUNT(*) as total_requests,
+    SUM(CASE WHEN event = 'err' THEN 1 ELSE 0 END) as error_count,
+    SUM(CASE WHEN event = 'err' THEN 1 ELSE 0 END) / COUNT(*) as error_rate
+FROM ods_RealTime_pcc_quickapp_events
+WHERE timed = CURRENT_DATE()
+    AND event IN ('req2', 'err')
+GROUP BY ggIdType
+HAVING COUNT(*) > 100
+ORDER BY error_rate DESC
+LIMIT 10;
+
+问题: 查询广告展示与点击的时间趋势
+SQL: %%sql
+SELECT 
+    timed,
+    SUM(CASE WHEN event = 'imp' THEN 1 ELSE 0 END) as impressions,
+    SUM(CASE WHEN event = 'clk' THEN 1 ELSE 0 END) as clicks,
+    SUM(CASE WHEN event = 'clk' THEN 1 ELSE 0 END) / 
+        NULLIF(SUM(CASE WHEN event = 'imp' THEN 1 ELSE 0 END), 0) as ctr
+FROM ods_RealTime_pcc_quickapp_events
+WHERE timed BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 30 DAY) AND CURRENT_DATE() 
+    AND event IN ('imp', 'clk')
+GROUP BY timed
+ORDER BY timed;
+
+问题: 分析投诉原因的分布情况
+SQL: %%sql
+SELECT 
+    complainReason, 
+    COUNT(*) as complaint_count,
+    COUNT(*) / SUM(COUNT(*)) OVER() as proportion
+FROM ods_RealTime_pcc_quickapp_events
+WHERE timed = CURRENT_DATE() 
+    AND event = 'complain1'
+GROUP BY complainReason
+ORDER BY complaint_count DESC; 
+问题: oppo今天手机各型号的占比是多少，用100%来划分
+SQL: %%sql
+select model, 
+    COUNT(*) as device_count, 
+    (COUNT(*) * 100.0) / SUM(COUNT(*)) OVER () as percentage
+FROM ods_RealTime_pcc_quickapp_events 
+WHERE timed = CURRENT_DATE()
+    AND brand = 'oppo' 
+GROUP BY model 
+ORDER BY device_count DESC
+
+问题: oppo今天手机各型号的占比是多少，用100%来划分
+SQL: %%sql
+SELECT model, 
+    COUNT(*) as device_count, 
+    (COUNT(*) * 100.0) / SUM(COUNT(*)) OVER () as percentage
+FROM ods_RealTime_pcc_quickapp_events 
+WHERE timed = CURRENT_DATE()
+    AND brand = 'oppo' 
+GROUP BY model 
+ORDER BY device_count DESC;
+
+问题: 华为今天platformVersionCode的占比[D[D
+SQL: %%sql
+SELECT platformVersionCode, 
+    COUNT(*) as version_count, 
+    (COUNT(*) * 100.0) / SUM(COUNT(*)) OVER () as percentage
+FROM ods_RealTime_pcc_quickapp_events 
+WHERE timed = CURRENT_DATE()
+    AND brand = 'huawei' 
+GROUP BY platformVersionCode 
+ORDER BY version_count DESC;
+
+问题: 华为手机今天下午14:00到14:20发生过clickComplain事件的人的launchid打印出来
+SQL: %%sql
+select DISTINCT launchId
+FROM ods_RealTime_pcc_quickapp_events
+WHERE timed = CURRENT_DATE()
+    AND brand = 'huawei'
+    AND event = 'clickComplain'
+    AND timedt BETWEEN CURRENT_DATE() + INTERVAL 14 HOUR AND CURRENT_DATE() + INTERVAL 14 HOUR + INTERVAL 20 MINUTE;
+
+问题: 华为手机今天下午14:00到14:05发生过clickComplain事件的人的launchid和regionName打印出来
+SQL: %%sql
+SELECT DISTINCT 
+    complaint.launchId, 
+    config.regionName
+FROM ods_RealTime_pcc_quickapp_events complaint
+LEFT JOIN ods_RealTime_pcc_quickapp_events config
+    ON complaint.launchId = config.launchId
+    AND config.event = 'config'
+    AND config.timed = CURRENT_DATE()
+WHERE complaint.timed = CURRENT_DATE()
+    AND complaint.brand = 'huawei'
+    AND complaint.event = 'clickComplain'
+    AND complaint.timedt BETWEEN CURRENT_DATE() + INTERVAL 14 HOUR 
+                            AND CURRENT_DATE() + INTERVAL 14 HOUR + INTERVAL 5 MINUTE;
+
+问题: 华为手机今天下午14:00到14:05发生过clickComplain事件的人的launchid和regionName打印出来
+SQL: %%sql
+SELECT DISTINCT 
+    complaint.launchId, 
+    config.regionName
+FROM ods_RealTime_pcc_quickapp_events complaint
+LEFT JOIN ods_RealTime_pcc_quickapp_events config
+    ON complaint.launchId = config.launchId
+    AND config.event = 'config'
+    AND config.timed = CURRENT_DATE()
+WHERE complaint.timed = CURRENT_DATE()
+    AND complaint.brand = 'huawei'
+    AND complaint.event = 'clickComplain'
+    AND complaint.timedt BETWEEN CURRENT_DATE() + INTERVAL 14 HOUR 
+                            AND CURRENT_DATE() + INTERVAL 14 HOUR + INTERVAL 5 MINUTE;
+
+问题: 今天VIVO的sourcePackageName都有哪些，占比用100%
+SQL: %%sql
+SELECT sourcePackageName, 
+    COUNT(*) as package_count, 
+    (COUNT(*) * 100.0) / SUM(COUNT(*)) OVER () as percentage
+FROM ods_RealTime_pcc_quickapp_events 
+WHERE timed = CURRENT_DATE()
+    AND brand = 'vivo' 
+GROUP BY sourcePackageName 
+ORDER BY package_count DESC;
+
+问题: 今天VIVO的sourcePackageName都有哪些，占比用100%
+SQL: %%sql
+SELECT sourcePackageName, 
+    COUNT(*) as package_count, 
+    (COUNT(*) * 100.0) / SUM(COUNT(*)) OVER () as percentage
+FROM ods_RealTime_pcc_quickapp_events 
+WHERE timed = CURRENT_DATE()
+    AND brand = 'vivo' 
+GROUP BY sourcePackageName 
+ORDER BY package_count DESC;
+
+问题: 今天VIVO的sourcePackageName都有哪些，占比用100%，另外排除一下sourcePackageName为None的，这个不用参与占比和显示
+
+SQL: %%sql
+SELECT sourcePackageName, 
+    COUNT(*) as package_count, 
+    (COUNT(*) * 100.0) / SUM(COUNT(*)) OVER () as percentage
+FROM ods_RealTime_pcc_quickapp_events 
+WHERE timed = CURRENT_DATE()
+    AND brand = 'vivo'
+    AND sourcePackageName != 'None'
+    AND sourcePackageName IS NOT NULL
+GROUP BY sourcePackageName 
+ORDER BY package_count DESC;
+
+问题: 今天12.10-12.50点击过clickHotline并且IP在河南的launchid、ip显示出来，brand要是华为
+SQL: %%sql
+SELECT DISTINCT launchId, IP
+FROM ods_RealTime_pcc_quickapp_events
+WHERE timed = CURRENT_DATE()
+    AND brand = 'huawei'
+    AND event = 'clickHotline'
+    AND timedt BETWEEN CURRENT_DATE() + INTERVAL 12 HOUR + INTERVAL 10 MINUTE 
+                   AND CURRENT_DATE() + INTERVAL 12 HOUR + INTERVAL 50 MINUTE
+    AND regionName = '河南';
+
+问题: 今天12.10-12.50点击过clickHotline并且IP在河南的launchid、ip显示出来，brand要是华为
+SQL: %%sql
+SELECT DISTINCT launchId, IP
+FROM ods_RealTime_pcc_quickapp_events
+WHERE timed = CURRENT_DATE()
+    AND brand = 'huawei'
+    AND event = 'clickHotline'
+    AND timedt BETWEEN CURRENT_DATE() + INTERVAL 12 HOUR + INTERVAL 10 MINUTE 
+                   AND CURRENT_DATE() + INTERVAL 12 HOUR + INTERVAL 50 MINUTE
+    AND regionName = '河南';
+
+问题: 今天12.10-12.50点击过clickHotline并且IP在河南的launchid、ip显示出来，brand要是华为
+SQL: %%sql
+SELECT DISTINCT launchId, IP
+FROM ods_RealTime_pcc_quickapp_events
+WHERE timed = CURRENT_DATE()
+    AND brand = 'huawei'
+    AND event = 'clickHotline'
+    AND timedt BETWEEN CURRENT_DATE() + INTERVAL 12 HOUR + INTERVAL 10 MINUTE 
+                   AND CURRENT_DATE() + INTERVAL 12 HOUR + INTERVAL 50 MINUTE
+    AND regionName = '河南';
+
+问题: 今天12.10-12.50点击过clickHotline并且IP在河南的launchid、ip显示出来，brand要是华为
+SQL: %%sql
+SELECT DISTINCT launchId, IP
+FROM ods_RealTime_pcc_quickapp_events
+WHERE timed = CURRENT_DATE()
+    AND brand = 'huawei'
+    AND event = 'clickHotline'
+    AND timedt BETWEEN CURRENT_DATE() + INTERVAL 12 HOUR + INTERVAL 10 MINUTE 
+                   AND CURRENT_DATE() + INTERVAL 12 HOUR + INTERVAL 50 MINUTE
+    AND regionName = '河南';
+
+问题: 今天12.10-12.50点击过clickHotline并且IP在河南的launchid、ip显示出来，brand要是华为
+SQL: %%sql
+SELECT DISTINCT e1.launchId, e2.IP
+FROM ods_RealTime_pcc_quickapp_events e1
+JOIN ods_RealTime_pcc_quickapp_events e2
+  ON e1.launchId = e2.launchId
+WHERE e1.timed = CURRENT_DATE()
+  AND e1.brand = 'huawei'
+  AND e1.event = 'clickHotline'
+  AND e2.event = 'config'
+  AND e2.regionName = '河南'
+  AND e1.timedt BETWEEN CURRENT_DATE() + INTERVAL 12 HOUR + INTERVAL 10 MINUTE 
+                     AND CURRENT_DATE() + INTERVAL 12 HOUR + INTERVAL 50 MINUTE;
+
+问题: 今天12.10-12.50点击过clickHotline并且IP在河南的launchid、ip显示出来，brand要是华为
+SQL: %%sql
+SELECT DISTINCT 
+    complaint.launchId, 
+    config.IP
+FROM ods_RealTime_pcc_quickapp_events complaint
+LEFT JOIN ods_RealTime_pcc_quickapp_events config
+    ON complaint.launchId = config.launchId
+    AND config.event = 'config'
+    AND config.timed = CURRENT_DATE()
+WHERE complaint.timed = CURRENT_DATE()
+    AND complaint.brand = 'huawei'
+    AND complaint.event = 'clickHotline'
+    AND config.regionName = '河南'
+    AND complaint.timedt BETWEEN CURRENT_DATE() + INTERVAL 12 HOUR + INTERVAL 10 MINUTE 
+                            AND CURRENT_DATE() + INTERVAL 12 HOUR + INTERVAL 50 MINUTE;
+
+问题: 今天12.10-12.50点击过clickHotline并且IP在河南的launchid、ip显示出来，brand要是华为
+SQL: %%sql
+SELECT DISTINCT 
+    complaint.launchId, 
+    config.IP
+FROM ods_RealTime_pcc_quickapp_events complaint
+LEFT JOIN ods_RealTime_pcc_quickapp_events config
+    ON complaint.launchId = config.launchId
+    AND config.event = 'config'
+    AND config.timed = CURRENT_DATE()
+WHERE complaint.timed = CURRENT_DATE()
+    AND complaint.brand = 'huawei'
+    AND complaint.event = 'clickHotline'
+    AND config.regionName = '河南'
+    AND complaint.timedt BETWEEN CURRENT_DATE() + INTERVAL 12 HOUR + INTERVAL 10 MINUTE 
+                            AND CURRENT_DATE() + INTERVAL 12 HOUR + INTERVAL 50 MINUTE;
+
+问题: 查询今天12.10分到16.30分产生过3次以上appLaunch的launchid有多少个
+SQL: %%sql
+SELECT COUNT(DISTINCT launchId) as frequent_launch_count
+FROM (
+    SELECT launchId
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed = CURRENT_DATE()
+        AND event = 'appLaunch'
+        AND timedt BETWEEN CURRENT_DATE() + INTERVAL 12 HOUR + INTERVAL 10 MINUTE 
+                       AND CURRENT_DATE() + INTERVAL 16 HOUR + INTERVAL 30 MINUTE
+    GROUP BY launchId
+    HAVING COUNT(*) >= 3
+) subquery;
+
+问题: 帮我查一下今天huawei里同launchid里imp有重复的reqid，显示他的launchid
+SQL: %%sql
+SELECT DISTINCT launchId
+FROM (
+    SELECT launchId, reqId, COUNT(*) as imp_count
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed = CURRENT_DATE()
+        AND brand = 'huawei'
+        AND event = 'imp'
+        AND reqId IS NOT NULL
+    GROUP BY launchId, reqId
+    HAVING COUNT(*) > 1
+) subquery;
+
+问题: 帮我查一下今天huawei里同launchid里req2有重复的reqid，显示他的launchid
+SQL: %%sql
+SELECT DISTINCT launchId
+FROM (
+    SELECT launchId, reqId, COUNT(*) as req2_count
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed = CURRENT_DATE()
+        AND brand = 'huawei'
+        AND event = 'req2'
+        AND reqId IS NOT NULL
+    GROUP BY launchId, reqId
+    HAVING COUNT(*) > 1
+) subquery;
+
+问题: 今天packageName=com.multiple.shop，华为reqType=1的ggTrueStyle=99的imp占reqtype=1的占比，在把另外几种占比也显示出来
+SQL: %%sql
+SELECT ggTrueStyle, 
+       COUNT(*) as imp_count, 
+       (COUNT(*) * 100.0) / SUM(COUNT(*)) OVER (PARTITION BY reqType) as percentage
+FROM ods_RealTime_pcc_quickapp_events 
+WHERE timed = CURRENT_DATE()
+    AND brand = 'huawei'
+    AND packageName = 'com.multiple.shop'
+    AND event = 'imp'
+    AND reqType = 1
+GROUP BY ggTrueStyle, reqType
+ORDER BY imp_count DESC;
+
+问题: 查一下reqid=slotReqId-b3b2441914c01a9d59f5367c6cb692c5的ggParams里的ext下面的customerChannel的值是多少
+SQL: %%sql
+SELECT ggParams->'$.ext.customerChannel' as customerChannel
+FROM ods_RealTime_pcc_quickapp_events
+WHERE timed = '2025-04-15'
+    AND reqId = 'slotReqId-b3b2441914c01a9d59f5367c6cb692c5'
+    AND event = 'send2'
+    AND ggParams IS NOT NULL
+LIMIT 1;
+
+问题: 查一下reqid=slotReqId-b3b2441914c01a9d59f5367c6cb692c5的ggParams里的ext下面的customerChannel的值是多少
+SQL: %%sql
+SELECT JSON_EXTRACT(ggParams, '$.ext.customerChannel') as customerChannel
+FROM ods_RealTime_pcc_quickapp_events
+WHERE timed = CURRENT_DATE()
+    AND reqId = 'slotReqId-b3b2441914c01a9d59f5367c6cb692c5'
+    AND ggParams IS NOT NULL
+LIMIT 1;
+
+问题: 我想查询今天5点以后ggplatform=ylh的ggparams里isApp为true的物料每小时占所有imp物料的占比
+SQL: %%sql
+SELECT 
+    HOUR(timedt) as hour_of_day,
+    COUNT(CASE WHEN ggParams->'$.isApp' = true THEN 1 END) as isApp_true_count,
+    COUNT(*) as total_imp_count,
+    (COUNT(CASE WHEN ggParams->'$.isApp' = true THEN 1 END) * 100.0) / COUNT(*) as percentage
+FROM ods_RealTime_pcc_quickapp_events
+WHERE timed = CURRENT_DATE()
+    AND timedt >= CURRENT_DATE() + INTERVAL 5 HOUR
+    AND event = 'imp'
+    AND ggPlatform = 'ylh'
+GROUP BY HOUR(timedt)
+ORDER BY hour_of_day;
+
+问题: 查询2025年4.15日reqId=slotReqId-b3b2441914c01a9d59f5367c6cb692c5的ggParams里的ext.customerChannel值是多少
+SQL: %%sql
+SELECT ggParams->'$.ext.customerChannel' as customerChannel
+FROM ods_RealTime_pcc_quickapp_events
+WHERE timed = '2025-04-15'
+    AND reqId = 'slotReqId-b3b2441914c01a9d59f5367c6cb692c5'
+    AND event = 'send2'
+    AND ggParams IS NOT NULL
+LIMIT 1;
+
+问题: 查一下快品购今天9点到9.10分有多少个launchid
+SQL: %%sql
+SELECT COUNT(DISTINCT launchId) as launchid_count
+FROM ods_RealTime_pcc_quickapp_events
+WHERE timed = CURRENT_DATE()
+    AND packageName = 'com.fast.shop'
+    AND timedt BETWEEN CURRENT_DATE() + INTERVAL 9 HOUR 
+                   AND CURRENT_DATE() + INTERVAL 9 HOUR + INTERVAL 10 MINUTE;
+
+问题: 查一下小米昨天的平均winPrice和今天的平均winPrice
+SQL: %%sql
+SELECT 
+    timed,
+    AVG(winPrice) as avg_win_price
+FROM ods_RealTime_pcc_quickapp_events
+WHERE timed IN (CURRENT_DATE(), DATE_SUB(CURRENT_DATE(), 1))
+    AND brand = 'xiaomi'
+    AND event = 'imp'
+    AND winPrice IS NOT NULL
+GROUP BY timed
+ORDER BY timed DESC;
+
+问题: 查一下小米昨天的平均winPrice和今天的平均winPrice，顺便告诉我昨天和今天的哪个launchid的winPrice最高
+SQL: %%sql
+SELECT 
+    timed,
+    AVG(winPrice) as avg_win_price,
+    MAX_BY(launchId, winPrice) as max_win_price_launchid,
+    MAX(winPrice) as max_win_price
+FROM ods_RealTime_pcc_quickapp_events
+WHERE timed IN (CURRENT_DATE(), DATE_SUB(CURRENT_DATE(), 1))
+    AND brand = 'xiaomi'
+    AND event = 'imp'
+    AND winPrice IS NOT NULL
+GROUP BY timed
+ORDER BY timed DESC;
+
+问题: 查一下小米昨天的平均winPrice和今天的平均winPrice，顺便告诉我昨天和今天的哪个launchid的winPrice最高，在把他当时imp里最高的reqid也打印出来，IP地址和省份也给我打印出来
+SQL: %%sql
+WITH daily_stats AS (
+    SELECT 
+        timed,
+        AVG(winPrice) as avg_win_price,
+        MAX_BY(launchId, winPrice) as max_win_price_launchid,
+        MAX_BY(reqId, winPrice) as max_win_price_reqid,
+        MAX(winPrice) as max_win_price
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed IN (CURRENT_DATE(), DATE_SUB(CURRENT_DATE(), 1))
+        AND brand = 'xiaomi'
+        AND event = 'imp'
+        AND winPrice IS NOT NULL
+    GROUP BY timed
+)
+
+SELECT 
+    ds.timed,
+    ds.avg_win_price,
+    ds.max_win_price_launchid,
+    ds.max_win_price_reqid,
+    ds.max_win_price,
+    config.IP as max_win_price_ip,
+    config.regionName as max_win_price_region
+FROM daily_stats ds
+LEFT JOIN ods_RealTime_pcc_quickapp_events config
+    ON ds.max_win_price_launchid = config.launchId
+    AND config.event = 'config'
+    AND config.timed = ds.timed
+ORDER BY ds.timed DESC;
+
+问题: 查一下小米昨天的平均winPrice和今天的平均winPrice，顺便告诉我昨天和今天的哪个launchid的winPrice最高，在把他当时imp里最高的reqid也打印出来，IP地址和省份也给我打印出来，再打印一下昨天和今天平均winPrice最高的launchid的sceneV4Name，再打印一下platformVersionCode
+SQL: %%sql
+WITH daily_stats AS (
+    SELECT 
+        timed,
+        AVG(winPrice) as avg_win_price,
+        MAX_BY(launchId, winPrice) as max_win_price_launchid,
+        MAX_BY(reqId, winPrice) as max_win_price_reqid,
+        MAX(winPrice) as max_win_price
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed IN (CURRENT_DATE(), DATE_SUB(CURRENT_DATE(), 1))
+        AND brand = 'xiaomi'
+        AND event = 'imp'
+        AND winPrice IS NOT NULL
+    GROUP BY timed
+)
+SELECT 
+    ds.timed,
+    ds.avg_win_price,
+    ds.max_win_price_launchid,
+    ds.max_win_price_reqid,
+    ds.max_win_price,
+    config.IP as max_win_price_ip,
+    config.regionName as max_win_price_region,
+    config.sceneV4Name as max_win_price_scene_v4_name,
+    info.platformVersionCode as max_win_price_platform_version_code
+FROM daily_stats ds
+LEFT JOIN ods_RealTime_pcc_quickapp_events config
+    ON ds.max_win_price_launchid = config.launchId
+    AND config.event = 'config'
+    AND config.timed = ds.timed
+LEFT JOIN ods_RealTime_pcc_quickapp_events info
+    ON ds.max_win_price_launchid = info.launchId
+    AND info.event = 'info'
+    AND info.timed = ds.timed
+ORDER BY ds.timed DESC;
+
+问题: 查一下小米昨天的平均winPrice和今天的平均winPrice，顺便告诉我昨天和今天的哪个launchid的winPrice最高，在把他当时imp里最高的reqid也打印出来，IP地址和省份也给我打印出来，再打印一下昨天和今天平均winPrice最高的launchid的sceneV4Name，再打印一下platformVersionCode，顺便对比一下VIVO的winPrice昨天和今天的最高值，需要打印出来VIVO的
+SQL: %%sql
+WITH daily_stats_xiaomi AS (
+    SELECT 
+        timed,
+        AVG(winPrice) as avg_win_price,
+        MAX_BY(launchId, winPrice) as max_win_price_launchid,
+        MAX_BY(reqId, winPrice) as max_win_price_reqid,
+        MAX(winPrice) as max_win_price
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed IN (CURRENT_DATE(), DATE_SUB(CURRENT_DATE(), 1))
+        AND brand = 'xiaomi'
+        AND event = 'imp'
+        AND winPrice IS NOT NULL
+    GROUP BY timed
+),
+daily_stats_vivo AS (
+    SELECT 
+        timed,
+        MAX(winPrice) as max_win_price_vivo
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed IN (CURRENT_DATE(), DATE_SUB(CURRENT_DATE(), 1))
+        AND brand = 'vivo'
+        AND event = 'imp'
+        AND winPrice IS NOT NULL
+    GROUP BY timed
+)
+SELECT 
+    ds_xiaomi.timed,
+    ds_xiaomi.avg_win_price as xiaomi_avg_win_price,
+    ds_xiaomi.max_win_price_launchid as xiaomi_max_win_price_launchid,
+    ds_xiaomi.max_win_price_reqid as xiaomi_max_win_price_reqid,
+    ds_xiaomi.max_win_price as xiaomi_max_win_price,
+    config.IP as xiaomi_max_win_price_ip,
+    config.regionName as xiaomi_max_win_price_region,
+    config.sceneV4Name as xiaomi_max_win_price_scene_v4_name,
+    info.platformVersionCode as xiaomi_max_win_price_platform_version_code,
+    ds_vivo.max_win_price_vivo as vivo_max_win_price
+FROM daily_stats_xiaomi ds_xiaomi
+LEFT JOIN ods_RealTime_pcc_quickapp_events config
+    ON ds_xiaomi.max_win_price_launchid = config.launchId
+    AND config.event = 'config'
+    AND config.timed = ds_xiaomi.timed
+LEFT JOIN ods_RealTime_pcc_quickapp_events info
+    ON ds_xiaomi.max_win_price_launchid = info.launchId
+    AND info.event = 'info'
+    AND info.timed = ds_xiaomi.timed
+LEFT JOIN daily_stats_vivo ds_vivo
+    ON ds_xiaomi.timed = ds_vivo.timed
+ORDER BY ds_xiaomi.timed DESC;
+
+问题: 查一下小米昨天的平均winPrice和今天的平均winPrice，顺便告诉我昨天和今天的哪个launchid的winPrice最高，在把他当时imp里最高的reqid也打印出来，IP地址和省份也给我打印出来，再打印一下昨天和今天平均winPrice最高的launchid的sceneV4Name，再打印一下platformVersionCode，顺便对比一下VIVO的winPrice昨天和今天的最高值，需要打印出来VIVO的launchid
+SQL: %%sql
+WITH daily_stats_xiaomi AS (
+    SELECT 
+        timed,
+        AVG(winPrice) as avg_win_price,
+        MAX_BY(launchId, winPrice) as max_win_price_launchid,
+        MAX_BY(reqId, winPrice) as max_win_price_reqid,
+        MAX(winPrice) as max_win_price
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed IN (CURRENT_DATE(), DATE_SUB(CURRENT_DATE(), 1))
+        AND brand = 'xiaomi'
+        AND event = 'imp'
+        AND winPrice IS NOT NULL
+    GROUP BY timed
+),
+daily_stats_vivo AS (
+    SELECT 
+        timed,
+        MAX(winPrice) as max_win_price_vivo,
+        MAX_BY(launchId, winPrice) as max_win_price_launchid_vivo
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed IN (CURRENT_DATE(), DATE_SUB(CURRENT_DATE(), 1))
+        AND brand = 'vivo'
+        AND event = 'imp'
+        AND winPrice IS NOT NULL
+    GROUP BY timed
+)
+SELECT 
+    ds_xiaomi.timed,
+    ds_xiaomi.avg_win_price as xiaomi_avg_win_price,
+    ds_xiaomi.max_win_price_launchid as xiaomi_max_win_price_launchid,
+    ds_xiaomi.max_win_price_reqid as xiaomi_max_win_price_reqid,
+    ds_xiaomi.max_win_price as xiaomi_max_win_price,
+    config.IP as xiaomi_max_win_price_ip,
+    config.regionName as xiaomi_max_win_price_region,
+    config.sceneV4Name as xiaomi_max_win_price_scene_v4_name,
+    info.platformVersionCode as xiaomi_max_win_price_platform_version_code,
+    ds_vivo.max_win_price_vivo as vivo_max_win_price,
+    ds_vivo.max_win_price_launchid_vivo as vivo_max_win_price_launchid
+FROM daily_stats_xiaomi ds_xiaomi
+LEFT JOIN ods_RealTime_pcc_quickapp_events config
+    ON ds_xiaomi.max_win_price_launchid = config.launchId
+    AND config.event = 'config'
+    AND config.timed = ds_xiaomi.timed
+LEFT JOIN ods_RealTime_pcc_quickapp_events info
+    ON ds_xiaomi.max_win_price_launchid = info.launchId
+    AND info.event = 'info'
+    AND info.timed = ds_xiaomi.timed
+LEFT JOIN daily_stats_vivo ds_vivo
+    ON ds_xiaomi.timed = ds_vivo.timed
+ORDER BY ds_xiaomi.timed DESC;
+
+问题: 对比一下华为上的买乐多和快领券的平均winPrice，我需要知道谁高谁低，我还要知道买乐多和快领券8点到9点之间平均每分钟有几次req2、send2、imp
+SQL: %%sql
+WITH win_price_stats AS (
+    SELECT 
+        packageName,
+        AVG(winPrice) as avg_win_price
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed = CURRENT_DATE()
+        AND brand = 'huawei'
+        AND event = 'imp'
+        AND packageName IN ('com.multiple.shop', 'com.hurry.take')
+        AND winPrice IS NOT NULL
+    GROUP BY packageName
+),
+event_stats AS (
+    SELECT 
+        packageName,
+        event,
+        COUNT(*) / 60.0 as avg_per_minute
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed = CURRENT_DATE()
+        AND brand = 'huawei'
+        AND event IN ('req2', 'send2', 'imp')
+        AND packageName IN ('com.multiple.shop', 'com.hurry.take')
+        AND timeh = 8
+    GROUP BY packageName, event
+)
+SELECT 
+    w1.packageName as app1_name,
+    w1.avg_win_price as app1_win_price,
+    w2.packageName as app2_name,
+    w2.avg_win_price as app2_win_price,
+    CASE 
+        WHEN w1.avg_win_price > w2.avg_win_price THEN '买乐多 higher'
+        WHEN w1.avg_win_price < w2.avg_win_price THEN '快领券 higher'
+        ELSE 'Equal'
+    END as win_price_comparison,
+    e1.event as app1_event,
+    e1.avg_per_minute as app1_avg_per_minute,
+    e2.event as app2_event,
+    e2.avg_per_minute as app2_avg_per_minute
+FROM win_price_stats w1
+CROSS JOIN win_price_stats w2
+LEFT JOIN event_stats e1 ON w1.packageName = e1.packageName
+LEFT JOIN event_stats e2 ON w2.packageName = e2.packageName AND e1.event = e2.event
+WHERE w1.packageName = 'com.multiple.shop'
+    AND w2.packageName = 'com.hurry.take';
+
+问题: 查询一下今天华为快看视频有多少个launchid
+SQL: SELECT COUNT(DISTINCT launchId) as launchid_count
+FROM ods_RealTime_pcc_quickapp_events
+WHERE timed = CURRENT_DATE()
+    AND brand = 'huawei'
+    AND packageName = 'com.guangtui.video';
+问题: 帮我查一下今天华为端买乐多4.3.57版本的全部分时指标
+SQL: %%sql
+WITH a AS (
+SELECT DISTINCT
+            timed,
+            timeh,
+            floor(minute(timedt)/20)*20 AS timem,
+            brand,
+            packagename,
+            platformversioncode2,
+            PCCSDKVersion,
+            launchid
+        FROM
+            ods.ods_RealTime_pcc_quickapp_events
+        WHERE
+            timed >= SUBDATE(CURDATE(), 0)
+            AND event = 'info'
+            AND brand = 'huawei'
+            AND packagename = 'com.multiple.shop'
+            AND PCCSDKVersion = '4.3.57'
+    ),
+    config AS (
+        SELECT
+            timed,
+            launchId,
+            sceneV4Name AS sceneName,
+            sceneid,
+            sceneV4AB
+        FROM
+            ods.ods_RealTime_pcc_quickapp_events
+        WHERE
+            timed >= SUBDATE(CURDATE(), 0)
+            AND event = 'config'
+    ),
+    b AS (
+        SELECT
+            timed,
+            launchid,
+            uniqueid,
+            userid,
+            traceid,
+            SUM(CASE WHEN event = 'info' THEN 1 ELSE 0 END) AS info,
+            SUM(CASE WHEN event = 'req2' THEN 1 ELSE 0 END) AS req2,
+            COUNT(DISTINCT CASE WHEN event = 'req2' THEN uniqueid END) AS req2uv,
+            SUM(CASE WHEN event = 'send2' THEN 1 ELSE 0 END) AS send2,
+            SUM(CASE WHEN event = 'imp' THEN 1 ELSE 0 END) AS imp,
+            COUNT(DISTINCT CASE WHEN event = 'imp' THEN uniqueid END) AS impuv,
+            SUM(CASE WHEN event = 'imp' AND (impPosition = 'layer' OR reqid LIKE 'layer%') THEN 1 ELSE 0 END) AS layerImp,
+            SUM(CASE WHEN event = 'imp' AND (impPosition = 'bottom' OR reqid LIKE 'bottom%') THEN 1 ELSE 0 END) AS bottomImp,
+            SUM(CASE WHEN event = 'imp' AND (impPosition = 'layer' OR reqid LIKE 'layer%') THEN winprice / 100000 ELSE 0 END) AS layerWinprice,
+            SUM(CASE WHEN event = 'imp' AND (impPosition = 'bottom' OR reqid LIKE 'bottom%') THEN winprice / 100000 ELSE 0 END) AS bottomWinprice,
+            SUM(CASE WHEN event = 'imp' THEN winprice / 100000 ELSE 0 END) AS winprice,
+            SUM(CASE WHEN event = 'clk' THEN 1 ELSE 0 END) AS clk,
+            COUNT(DISTINCT CASE WHEN event = 'clk' THEN uniqueid END) AS clkuv,
+            SUM(CASE WHEN event = 'clk' AND clkv = '2' THEN 1 ELSE 0 END) AS adbClk,
+            SUM(CASE WHEN event = 'cls' THEN 1 ELSE 0 END) AS cls,
+            SUM(CASE WHEN event = 'err' THEN 1 ELSE 0 END) AS err
+        FROM
+            ods.ods_RealTime_pcc_quickapp_events
+        WHERE
+            timed >= SUBDATE(CURDATE(), 0)
+            AND event IN ('info', 'req2', 'send2', 'imp', 'clk', 'cls', 'err')
+            AND launchid IN (SELECT launchid FROM a)
+        GROUP BY
+            timed,
+            launchid,
+            uniqueid,
+            userid,
+            traceid
+    )
+SELECT
+    a.timed,
+    a.timeh,
+    a.packagename,
+    a.PCCSDKVersion AS sdk,
+    COUNT(DISTINCT a.launchid) AS launchid_uv,
+    COUNT(DISTINCT b.traceid) AS traceid_uv,
+    COUNT(DISTINCT b.uniqueid) AS uniqueid_uv,
+    ROUND(SUM(b.impuv) / COUNT(DISTINCT b.uniqueid), 2) AS 曝光用户占比,
+    ROUND(SUM(b.clkuv) / COUNT(DISTINCT b.uniqueid), 2) AS 点击用户占比,
+    ROUND(SUM(b.imp) / COUNT(DISTINCT b.uniqueid), 2) AS ipuu,
+    ROUND(SUM(b.clk) / COUNT(DISTINCT b.uniqueid), 2) AS cpuu,
+    ROUND(SUM(b.winprice) / COUNT(DISTINCT b.uniqueid), 4) AS arpuu,
+    ROUND(SUM(b.imp) / COUNT(DISTINCT a.launchid), 2) AS ipul,
+    ROUND(SUM(b.clk) / COUNT(DISTINCT a.launchid), 2) AS cpul,
+    ROUND(SUM(b.winprice) / COUNT(DISTINCT a.launchid), 4) AS arpul,
+    ROUND(SUM(b.layerImp) / COUNT(DISTINCT a.launchid), 2) AS layer_ipul,
+    ROUND(SUM(b.bottomImp) / COUNT(DISTINCT a.launchid), 2) AS bottom_ipul,
+    ROUND(SUM(b.clk) / NULLIF(SUM(b.imp), 0), 2) AS ctr,
+    ROUND(SUM(b.clk) / NULLIF(SUM(b.layerImp), 0), 2) AS layer_ctr,
+    ROUND(SUM(b.adbClk) / NULLIF(SUM(b.clk), 0), 2) AS adb_rate,
+    ROUND(SUM(b.winprice), 2) AS preincome,
+    ROUND(SUM(b.winprice) / NULLIF(SUM(b.imp), 0) * 1000, 2) AS ecpm,
+    ROUND(SUM(b.layerWinprice) / NULLIF(SUM(b.layerImp), 0) * 1000, 2) AS layer_ecpm,
+    ROUND(SUM(b.bottomWinprice) / NULLIF(SUM(b.bottomImp), 0) * 1000, 2) AS bottom_ecpm,
+    ROUND(SUM(b.winprice) / NULLIF(SUM(b.clk), 0), 2) AS cpc
+FROM
+    a
+    LEFT JOIN b ON a.timed = b.timed AND a.launchid = b.launchid
+    LEFT JOIN config ON config.timed = b.timed AND config.launchid = b.launchid
+WHERE
+    a.timed >= SUBDATE(CURDATE(), 0)
+    AND a.brand = 'huawei'
+    AND a.packagename = 'com.multiple.shop'
+GROUP BY
+    a.timed,
+    a.timeh,
+    a.packagename,
+    a.PCCSDKVersion
+ORDER BY
+    a.timed,
+    a.timeh;
+
+
+问题: 查询今天华为买乐多最新PCCSDKVersion版本和旧PCCSDKVersion版本（最新版本之前的一个版本）全部指标数据，不需要分时
+SQL: %%sql
+WITH max_ver AS (
+    SELECT MAX(PCCSDKVersion) as latest_version
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed = CURRENT_DATE()
+        AND brand = 'huawei'
+        AND packageName = 'com.multiple.shop'
+        AND event = 'info'
+),
+second_max_ver AS (
+    SELECT MAX(PCCSDKVersion) as second_latest_version
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed = CURRENT_DATE()
+        AND brand = 'huawei'
+        AND packageName = 'com.multiple.shop'
+        AND event = 'info'
+        AND PCCSDKVersion < (SELECT latest_version FROM max_ver)
+),
+target_versions AS (
+    SELECT latest_version as version FROM max_ver
+    UNION ALL
+    SELECT second_latest_version FROM second_max_ver
+),
+base AS (
+    SELECT 
+        a.timed, 
+        a.packagename, 
+        a.PCCSDKVersion,
+        a.launchid,
+        b.uniqueid,
+        b.traceid,
+        b.imp,
+        b.clk,
+        b.impuv,
+        b.clkuv,
+        b.layerImp,
+        b.bottomImp,
+        b.layerWinprice,
+        b.bottomWinprice,
+        b.winprice,
+        b.adbClk
+    FROM (
+        SELECT DISTINCT 
+            timed, packagename, PCCSDKVersion, launchid
+        FROM ods_RealTime_pcc_quickapp_events e
+        WHERE timed = CURRENT_DATE()
+            AND event = 'info'
+            AND brand = 'huawei'
+            AND packagename = 'com.multiple.shop'
+            AND EXISTS (
+                SELECT 1 FROM target_versions t
+                WHERE e.PCCSDKVersion = t.version
+            )
+    ) a
+    LEFT JOIN (
+        SELECT 
+            timed, 
+            launchid, 
+            uniqueid, 
+            userid,
+            traceid,
+            SUM(CASE WHEN event = 'info' THEN 1 ELSE 0 END) AS info,
+            SUM(CASE WHEN event = 'req2' THEN 1 ELSE 0 END) AS req2,
+            COUNT(DISTINCT CASE WHEN event = 'req2' THEN uniqueid END) AS req2uv,
+            SUM(CASE WHEN event = 'send2' THEN 1 ELSE 0 END) AS send2,
+            SUM(CASE WHEN event = 'imp' THEN 1 ELSE 0 END) AS imp,
+            COUNT(DISTINCT CASE WHEN event = 'imp' THEN uniqueid END) AS impuv,
+            SUM(CASE WHEN event = 'imp' AND (impPosition = 'layer' OR reqid LIKE 'layer%%') THEN 1 ELSE 0 END) AS layerImp,
+            SUM(CASE WHEN event = 'imp' AND (impPosition = 'bottom' OR reqid LIKE 'bottom%%') THEN 1 ELSE 0 END) AS bottomImp,
+            SUM(CASE WHEN event = 'imp' AND (impPosition = 'layer' OR reqid LIKE 'layer%%') THEN winprice / 100000 ELSE 0 END) AS layerWinprice,
+            SUM(CASE WHEN event = 'imp' AND (impPosition = 'bottom' OR reqid LIKE 'bottom%%') THEN winprice / 100000 ELSE 0 END) AS bottomWinprice,
+            SUM(CASE WHEN event = 'imp' THEN winprice / 100000 ELSE 0 END) AS winprice,
+            SUM(CASE WHEN event = 'clk' THEN 1 ELSE 0 END) AS clk,
+            COUNT(DISTINCT CASE WHEN event = 'clk' THEN uniqueid END) AS clkuv,
+            SUM(CASE WHEN event = 'clk' AND clkv = '2' THEN 1 ELSE 0 END) AS adbClk,
+            SUM(CASE WHEN event = 'cls' THEN 1 ELSE 0 END) AS cls,
+            SUM(CASE WHEN event = 'err' THEN 1 ELSE 0 END) AS err
+        FROM ods_RealTime_pcc_quickapp_events e
+        WHERE timed = CURRENT_DATE()
+            AND event IN ('info', 'req2', 'send2', 'imp', 'clk', 'cls', 'err')
+            AND EXISTS (
+                SELECT 1 FROM ods_RealTime_pcc_quickapp_events i
+                JOIN target_versions t ON i.PCCSDKVersion = t.version
+                WHERE i.timed = CURRENT_DATE()
+                    AND i.event = 'info'
+                    AND i.brand = 'huawei'
+                    AND i.packagename = 'com.multiple.shop'
+                    AND i.launchid = e.launchid
+            )
+        GROUP BY timed, launchid, uniqueid, userid, traceid
+    ) b ON a.timed = b.timed AND a.launchid = b.launchid
+)
+SELECT
+    timed,
+    packagename,
+    PCCSDKVersion AS sdk,
+    COUNT(DISTINCT launchid) AS launchid_uv,
+    COUNT(DISTINCT traceid) AS traceid_uv,
+    COUNT(DISTINCT uniqueid) AS uniqueid_uv,
+    ROUND(SUM(impuv) / COUNT(DISTINCT uniqueid), 2) AS 曝光用户占比,
+    ROUND(SUM(clkuv) / COUNT(DISTINCT uniqueid), 2) AS 点击用户占比,
+    ROUND(SUM(imp) / COUNT(DISTINCT uniqueid), 2) AS ipuu,
+    ROUND(SUM(clk) / COUNT(DISTINCT uniqueid), 2) AS cpuu,
+    ROUND(SUM(winprice) / COUNT(DISTINCT uniqueid), 4) AS arpuu,
+    ROUND(SUM(imp) / COUNT(DISTINCT launchid), 2) AS ipul,
+    ROUND(SUM(clk) / COUNT(DISTINCT launchid), 2) AS cpul,
+    ROUND(SUM(winprice) / COUNT(DISTINCT launchid), 4) AS arpul,
+    ROUND(SUM(layerImp) / COUNT(DISTINCT launchid), 2) AS layer_ipul,
+    ROUND(SUM(bottomImp) / COUNT(DISTINCT launchid), 2) AS bottom_ipul,
+    ROUND(SUM(clk) / NULLIF(SUM(imp), 0), 2) AS ctr,
+    ROUND(SUM(clk) / NULLIF(SUM(layerImp), 0), 2) AS layer_ctr,
+    ROUND(SUM(adbClk) / NULLIF(SUM(clk), 0), 2) AS adb_rate,
+    ROUND(SUM(winprice), 2) AS preincome,
+    ROUND(SUM(winprice) / NULLIF(SUM(imp), 0) * 1000, 2) AS ecpm,
+    ROUND(SUM(layerWinprice) / NULLIF(SUM(layerImp), 0) * 1000, 2) AS layer_ecpm,
+    ROUND(SUM(bottomWinprice) / NULLIF(SUM(bottomImp), 0) * 1000, 2) AS bottom_ecpm,
+    ROUND(SUM(winprice) / NULLIF(SUM(clk), 0), 2) AS cpc
+FROM base
+WHERE timed = CURRENT_DATE()
+GROUP BY timed, packagename, PCCSDKVersion
+ORDER BY PCCSDKVersion DESC;
+
+问题: 查询今天华为买乐多最新PCCSDKVersion版本和旧PCCSDKVersion版本（最新版本之前的一个版本）全部指标数据，不需要分时
+SQL: WITH max_ver AS (
+    SELECT MAX(PCCSDKVersion) as latest_version
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed = CURRENT_DATE()
+        AND brand = 'huawei'
+        AND packageName = 'com.multiple.shop'
+        AND event = 'info'
+),
+second_max_ver AS (
+    SELECT MAX(PCCSDKVersion) as second_latest_version
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed = CURRENT_DATE()
+        AND brand = 'huawei'
+        AND packageName = 'com.multiple.shop'
+        AND event = 'info'
+        AND PCCSDKVersion < (SELECT latest_version FROM max_ver)
+),
+base AS (
+    -- 基础信息和指标计算的联合查询
+    SELECT 
+        a.timed, 
+        a.packagename, 
+        a.PCCSDKVersion,
+        a.launchid,
+        b.uniqueid,
+        b.traceid,
+        b.imp,
+        b.clk,
+        b.impuv,
+        b.clkuv,
+        b.layerImp,
+        b.bottomImp,
+        b.layerWinprice,
+        b.bottomWinprice,
+        b.winprice,
+        b.adbClk
+    FROM (
+        -- 获取华为买乐多最新版本和次新版本基础信息
+        SELECT DISTINCT 
+            timed, packagename, PCCSDKVersion, launchid
+        FROM ods_RealTime_pcc_quickapp_events
+        WHERE timed = CURRENT_DATE()
+            AND event = 'info'
+            AND brand = 'huawei'
+            AND packagename = 'com.multiple.shop'
+            AND PCCSDKVersion IN (
+                (SELECT latest_version FROM max_ver),
+                (SELECT second_latest_version FROM second_max_ver)
+            )
+    ) a
+    LEFT JOIN (
+        -- 计算关键指标
+        SELECT 
+            timed, 
+            launchid, 
+            uniqueid, 
+            userid,
+            traceid,
+            SUM(CASE WHEN event = 'info' THEN 1 ELSE 0 END) AS info,
+            SUM(CASE WHEN event = 'req2' THEN 1 ELSE 0 END) AS req2,
+            COUNT(DISTINCT CASE WHEN event = 'req2' THEN uniqueid END) AS req2uv,
+            SUM(CASE WHEN event = 'send2' THEN 1 ELSE 0 END) AS send2,
+            SUM(CASE WHEN event = 'imp' THEN 1 ELSE 0 END) AS imp,
+            COUNT(DISTINCT CASE WHEN event = 'imp' THEN uniqueid END) AS impuv,
+            SUM(CASE WHEN event = 'imp' AND (impPosition = 'layer' OR reqid LIKE 'layer%') THEN 1 ELSE 0 END) AS layerImp,
+            SUM(CASE WHEN event = 'imp' AND (impPosition = 'bottom' OR reqid LIKE 'bottom%') THEN 1 ELSE 0 END) AS bottomImp,
+            SUM(CASE WHEN event = 'imp' AND (impPosition = 'layer' OR reqid LIKE 'layer%') THEN winprice / 100000 ELSE 0 END) AS layerWinprice,
+            SUM(CASE WHEN event = 'imp' AND (impPosition = 'bottom' OR reqid LIKE 'bottom%') THEN winprice / 100000 ELSE 0 END) AS bottomWinprice,
+            SUM(CASE WHEN event = 'imp' THEN winprice / 100000 ELSE 0 END) AS winprice,
+            SUM(CASE WHEN event = 'clk' THEN 1 ELSE 0 END) AS clk,
+            COUNT(DISTINCT CASE WHEN event = 'clk' THEN uniqueid END) AS clkuv,
+            SUM(CASE WHEN event = 'clk' AND clkv = '2' THEN 1 ELSE 0 END) AS adbClk,
+            SUM(CASE WHEN event = 'cls' THEN 1 ELSE 0 END) AS cls,
+            SUM(CASE WHEN event = 'err' THEN 1 ELSE 0 END) AS err
+        FROM ods_RealTime_pcc_quickapp_events
+        WHERE timed = CURRENT_DATE()
+            AND event IN ('info', 'req2', 'send2', 'imp', 'clk', 'cls', 'err')
+            AND launchid IN (
+                SELECT launchid FROM ods_RealTime_pcc_quickapp_events
+                WHERE timed = CURRENT_DATE()
+                    AND event = 'info'
+                    AND brand = 'huawei'
+                    AND packagename = 'com.multiple.shop'
+                    AND PCCSDKVersion IN (
+                        (SELECT latest_version FROM max_ver),
+                        (SELECT second_latest_version FROM second_max_ver)
+                    )
+            )
+        GROUP BY timed, launchid, uniqueid, userid, traceid
+    ) b ON a.timed = b.timed AND a.launchid = b.launchid
+)
+SELECT
+    timed,
+    packagename,
+    PCCSDKVersion AS sdk,
+    COUNT(DISTINCT launchid) AS launchid_uv,
+    COUNT(DISTINCT traceid) AS traceid_uv,
+    COUNT(DISTINCT uniqueid) AS uniqueid_uv,
+    ROUND(SUM(impuv) / COUNT(DISTINCT uniqueid), 2) AS 曝光用户占比,
+    ROUND(SUM(clkuv) / COUNT(DISTINCT uniqueid), 2) AS 点击用户占比,
+    ROUND(SUM(imp) / COUNT(DISTINCT uniqueid), 2) AS ipuu,
+    ROUND(SUM(clk) / COUNT(DISTINCT uniqueid), 2) AS cpuu,
+    ROUND(SUM(winprice) / COUNT(DISTINCT uniqueid), 4) AS arpuu,
+    ROUND(SUM(imp) / COUNT(DISTINCT launchid), 2) AS ipul,
+    ROUND(SUM(clk) / COUNT(DISTINCT launchid), 2) AS cpul,
+    ROUND(SUM(winprice) / COUNT(DISTINCT launchid), 4) AS arpul,
+    ROUND(SUM(layerImp) / COUNT(DISTINCT launchid), 2) AS layer_ipul,
+    ROUND(SUM(bottomImp) / COUNT(DISTINCT launchid), 2) AS bottom_ipul,
+    ROUND(SUM(clk) / NULLIF(SUM(imp), 0), 2) AS ctr,
+    ROUND(SUM(clk) / NULLIF(SUM(layerImp), 0), 2) AS layer_ctr,
+    ROUND(SUM(adbClk) / NULLIF(SUM(clk), 0), 2) AS adb_rate,
+    ROUND(SUM(winprice), 2) AS preincome,
+    ROUND(SUM(winprice) / NULLIF(SUM(imp), 0) * 1000, 2) AS ecpm,
+    ROUND(SUM(layerWinprice) / NULLIF(SUM(layerImp), 0) * 1000, 2) AS layer_ecpm,
+    ROUND(SUM(bottomWinprice) / NULLIF(SUM(bottomImp), 0) * 1000, 2) AS bottom_ecpm,
+    ROUND(SUM(winprice) / NULLIF(SUM(clk), 0), 2) AS cpc
+FROM base
+WHERE timed = CURRENT_DATE()
+GROUP BY timed, packagename, PCCSDKVersion
+ORDER BY PCCSDKVersion DESC;
+
+问题: 我想查一下huawei趣味问答过去5个小时的send2、imp、clk，具体到ggsourcetype、impposition、clkv，并按小时降序、event降序
+SQL: SELECT 
+    HOUR(timedt) as hour_of_day,
+    event,
+    ggSourceType,
+    impPosition,
+    clkV,
+    COUNT(*) as event_count
+FROM ods_RealTime_pcc_quickapp_events
+WHERE timed = CURRENT_DATE()
+    AND brand = 'huawei'
+    AND packageName = 'com.eni.funanswer'
+    AND event IN ('send2', 'imp', 'clk')
+    AND timedt >= CURRENT_TIMESTAMP() - INTERVAL 5 HOUR
+GROUP BY 
+    HOUR(timedt),
+    event,
+    ggSourceType,
+    impPosition,
+    clkV
+ORDER BY 
+    hour_of_day DESC,
+    event DESC;
+
+问题: 查询一下今天趣味问答的广告源是huawei的ggSourceType，占每小时的imp占比，按小时降序、ggsourcetype降序，过去3小时
+
+SQL: SELECT 
+    HOUR(timedt) as hour_of_day,
+    ggSourceType,
+    COUNT(*) as imp_count,
+    (COUNT(*) * 100.0) / SUM(COUNT(*)) OVER (PARTITION BY HOUR(timedt)) as percentage
+FROM ods_RealTime_pcc_quickapp_events
+WHERE timed = CURRENT_DATE()
+    AND packageName = 'com.eni.funanswer'
+    AND ggPlatform = 'huawei'
+    AND event = 'imp'
+    AND timedt >= CURRENT_TIMESTAMP() - INTERVAL 3 HOUR
+GROUP BY 
+    HOUR(timedt),
+    ggSourceType
+ORDER BY 
+    hour_of_day DESC,
+    ggSourceType DESC;
+
+问题: 查询huawei买乐多4.3.57版本 ylh各clkv的cpul，按小时聚合并降序
+SQL: SELECT 
+    timed,
+    timeh,
+    packagename,
+    PCCSDKVersion AS sdk,
+    clkV,
+    COUNT(DISTINCT launchid) AS total_launches,
+    SUM(CASE WHEN event = 'clk' THEN 1 ELSE 0 END) AS total_clicks,
+    ROUND(SUM(CASE WHEN event = 'clk' THEN 1 ELSE 0 END) / COUNT(DISTINCT launchid), 2) AS cpul
+FROM ods_RealTime_pcc_quickapp_events
+WHERE timed = CURRENT_DATE()
+    AND brand = 'huawei'
+    AND packagename = 'com.multiple.shop'
+    AND PCCSDKVersion = '4.3.57'
+    AND ggPlatform = 'ylh'
+    AND event IN ('info', 'clk')
+GROUP BY timed, timeh, packagename, PCCSDKVersion, clkV
+ORDER BY timeh DESC, cpul DESC;
+
+问题: 查询huawei买乐多4.3.57版本 ylh各clkv的cpul，并再计算一个ylh的clkv=2 和 98的加起来的cpul按小时聚合并降序
+SQL: %%sql
+SELECT 
+    timed,
+    timeh,
+    packagename,
+    PCCSDKVersion AS sdk,
+    COUNT(DISTINCT launchid) AS total_launches,
+    SUM(CASE WHEN event = 'clk' THEN 1 ELSE 0 END) AS total_clicks,
+    SUM(CASE WHEN event = 'clk' AND clkV = '2' THEN 1 ELSE 0 END) AS clkv_2_clicks,
+    SUM(CASE WHEN event = 'clk' AND clkV = '98' THEN 1 ELSE 0 END) AS clkv_98_clicks,
+    ROUND(SUM(CASE WHEN event = 'clk' THEN 1 ELSE 0 END) / COUNT(DISTINCT launchid), 2) AS cpul,
+    ROUND(SUM(CASE WHEN event = 'clk' AND clkV = '2' THEN 1 ELSE 0 END) / COUNT(DISTINCT launchid), 2) AS cpul_clkv_2,
+    ROUND(SUM(CASE WHEN event = 'clk' AND clkV = '98' THEN 1 ELSE 0 END) / COUNT(DISTINCT launchid), 2) AS cpul_clkv_98
+FROM ods_RealTime_pcc_quickapp_events
+WHERE timed = CURRENT_DATE()
+    AND brand = 'huawei'
+    AND packagename = 'com.multiple.shop'
+    AND PCCSDKVersion = '4.3.57'
+    AND ggPlatform = 'ylh'
+    AND event IN ('info', 'clk')
+GROUP BY timed, timeh, packagename, PCCSDKVersion
+ORDER BY timeh DESC, cpul DESC;
+
+问题: 查询huawei买乐多4.3.57版本 ylh各clkv的cpul，并再计算一个ylh的clkv=2 和 98的加起来的cpul按小时聚合并降序
+SQL: SELECT 
+    timed,
+    timeh,
+    packagename,
+    PCCSDKVersion AS sdk,
+    clkV,
+    COUNT(DISTINCT launchid) AS total_launches,
+    SUM(CASE WHEN event = 'clk' THEN 1 ELSE 0 END) AS total_clicks,
+    ROUND(SUM(CASE WHEN event = 'clk' THEN 1 ELSE 0 END) / COUNT(DISTINCT launchid), 2) AS cpul,
+    ROUND(SUM(CASE WHEN event = 'clk' AND clkV IN ('2', '98') THEN 1 ELSE 0 END) / COUNT(DISTINCT launchid), 2) AS cpul_clkv_2_98
+FROM ods_RealTime_pcc_quickapp_events
+WHERE timed = CURRENT_DATE()
+    AND brand = 'huawei'
+    AND packagename = 'com.multiple.shop'
+    AND PCCSDKVersion = '4.3.57'
+    AND ggPlatform = 'ylh'
+    AND event IN ('info', 'clk')
+GROUP BY timed, timeh, packagename, PCCSDKVersion, clkV
+ORDER BY timeh DESC, cpul DESC;
+
+问题: 查询华为买乐多4.3.57版本在ylh平台的点击数据，按小时和clkV分组，并计算以下指标：
+
+1. 点击数：统计event='clk'的事件数量
+2. 点击占比：每个clkV类型在当前小时内的点击占当前小时总点击的百分比（使用窗口函数）
+3. 总启动数：每个小时的所有启动ID数（不分clkV类型，使用窗口函数sum over来汇总）
+4. CPUL：使用点击数除以当前小时的总启动数
+5. 实际启动数：每个clkV分组内的实际启动ID数
+6. 实际CPUL：使用点击数除以分组内的实际启动数
+
+重要条件：
+- 必须同时包含info和clk事件（AND event IN ('info', 'clk')）
+- 点击数统计必须使用：SUM(CASE WHEN event = 'clk' THEN 1 ELSE 0 END)
+- 总启动数必须使用：sum(COUNT(DISTINCT launchid)) over (partition by timeh)
+- 实际启动数使用：COUNT(DISTINCT launchid)
+- 只显示12点以后的数据
+- 按小时降序和CPUL降序排序
+SQL: SELECT 
+    timed,
+    timeh,
+    packagename,
+    PCCSDKVersion AS sdk,
+    clkV,
+    SUM(CASE WHEN event = 'clk' THEN 1 ELSE 0 END) AS click_count,
+    (SUM(CASE WHEN event = 'clk' THEN 1 ELSE 0 END) * 100.0) / SUM(SUM(CASE WHEN event = 'clk' THEN 1 ELSE 0 END)) OVER (PARTITION BY timeh) AS click_percentage,
+    SUM(COUNT(DISTINCT launchid)) OVER (PARTITION BY timeh) AS total_launches,
+    ROUND(SUM(CASE WHEN event = 'clk' THEN 1 ELSE 0 END) / SUM(COUNT(DISTINCT launchid)) OVER (PARTITION BY timeh), 2) AS cpul,
+    COUNT(DISTINCT launchid) AS actual_launches,
+    ROUND(SUM(CASE WHEN event = 'clk' THEN 1 ELSE 0 END) / COUNT(DISTINCT launchid), 2) AS actual_cpul
+FROM ods_RealTime_pcc_quickapp_events
+WHERE timed = CURRENT_DATE()
+    AND brand = 'huawei'
+    AND packagename = 'com.multiple.shop'
+    AND PCCSDKVersion = '4.3.57'
+    AND ggPlatform = 'ylh'
+    AND event IN ('info', 'clk')
+    AND timeh >= 12
+GROUP BY timed, timeh, packagename, PCCSDKVersion, clkV
+ORDER BY timeh DESC, cpul DESC;
+
+问题: 我想看华为买乐多4.3.57版本在ylh广告平台的每小时表现，需要按不同的点击类型(clkV)分开统计。
+
+请同时显示：
+- 每种点击类型的点击数
+- 每种点击类型在该小时内的占比
+- 该小时的总启动数（所有点击类型一起算）
+- 平均每次启动产生的点击数
+
+只要12点后的数据，按时间倒序排列。
+
+重要：计算启动数时要包括没有产生点击的启动。
+SQL: WITH launch_counts AS (
+    SELECT 
+        timed,
+        timeh,
+        packagename,
+        PCCSDKVersion,
+        clkV,
+        COUNT(DISTINCT launchid) AS group_launches,
+        SUM(CASE WHEN event = 'clk' THEN 1 ELSE 0 END) AS click_count
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed = CURRENT_DATE()
+        AND brand = 'huawei'
+        AND packagename = 'com.multiple.shop'
+        AND PCCSDKVersion = '4.3.57'
+        AND ggPlatform = 'ylh'
+        AND event IN ('info', 'clk')
+        AND timeh >= 12
+    GROUP BY timed, timeh, packagename, PCCSDKVersion, clkV
+)
+SELECT
+    timed,
+    timeh,
+    packagename,
+    PCCSDKVersion AS sdk,
+    clkV,
+    click_count,
+    (click_count * 100.0) / SUM(click_count) OVER (PARTITION BY timeh) AS click_percentage,
+    SUM(group_launches) OVER (PARTITION BY timeh) AS total_launches,
+    ROUND(click_count / SUM(group_launches) OVER (PARTITION BY timeh), 2) AS avg_clicks_per_launch,
+    group_launches AS real_launches,
+    ROUND(click_count / group_launches, 2) AS real_cpul
+FROM launch_counts
+ORDER BY timeh DESC, avg_clicks_per_launch DESC;
+
+问题: 我想看华为买乐多4.3.57版本在ylh广告平台的每小时表现，需要按不同的点击类型(clkV)分开统计。
+
+请同时显示：
+- 每种点击类型的点击数
+- 每种点击类型在该小时内的占比
+- 该小时的总启动数（所有点击类型一起算）
+- 平均每次启动产生的点击数
+
+只要12点后的数据，按时间倒序排列。
+
+重要：计算启动数时要包括没有产生点击的启动。
+SQL: SELECT 
+    timed,
+    timeh,
+    packagename,
+    PCCSDKVersion AS sdk,
+    clkV,
+    SUM(CASE WHEN event = 'clk' THEN 1 ELSE 0 END) AS click_count,
+    (SUM(CASE WHEN event = 'clk' THEN 1 ELSE 0 END) * 100.0) / SUM(SUM(CASE WHEN event = 'clk' THEN 1 ELSE 0 END)) OVER (PARTITION BY timeh) AS click_percentage,
+    COUNT(DISTINCT launchid) OVER (PARTITION BY timeh) AS total_launches,
+    ROUND(SUM(CASE WHEN event = 'clk' THEN 1 ELSE 0 END) / COUNT(DISTINCT launchid) OVER (PARTITION BY timeh), 2) AS cpul
+FROM ods_RealTime_pcc_quickapp_events
+WHERE timed = CURRENT_DATE()
+    AND brand = 'huawei'
+    AND packagename = 'com.multiple.shop'
+    AND PCCSDKVersion = '4.3.57'
+    AND ggPlatform = 'ylh'
+    AND event IN ('info', 'clk')
+    AND timeh >= 12
+GROUP BY timed, timeh, packagename, PCCSDKVersion, clkV
+ORDER BY timeh DESC;
+
+问题: 查询今天华为买乐多在SDK版本4.3.57下的点击相关指标，包括总点击量、点击占比、每次启动点击数（cpul）、实际启动次数和实际每次启动点击数（real_cpul），按时间小时分组，筛选时间小时大于等于12的事件，限定ggPlatform为ylh，仅包含info和clk事件，按时间小时和cpul降序排列。 （特别注意：此查询使用了窗口函数中的嵌套聚合：sum(SUM(...)) OVER(...)；使用了窗口函数中的嵌套聚合：sum(COUNT(...)) OVER(...)；使用了窗口函数中的嵌套聚合：sum(COUNT(...)) OVER(...)；使用了窗口函数中的DISTINCT计算；使用了多个窗口函数计算；使用了分组聚合值除以窗口函数值的计算方式）
+SQL: SELECT 
+    timed,
+    timeh,
+    packagename,
+    PCCSDKVersion AS sdk,
+    clkV,
+    SUM(CASE WHEN event = 'clk' THEN 1 ELSE 0 END) AS click_count,
+    (SUM(CASE WHEN event = 'clk' THEN 1 ELSE 0 END) * 100.0) / SUM(SUM(CASE WHEN event = 'clk' THEN 1 ELSE 0 END)) OVER (PARTITION BY timeh) AS click_percentage,
+    SUM(COUNT(DISTINCT launchid)) OVER (PARTITION BY timeh) AS total_launches,
+    ROUND(SUM(CASE WHEN event = 'clk' THEN 1 ELSE 0 END) / SUM(COUNT(DISTINCT launchid)) OVER (PARTITION BY timeh), 2) AS cpul,
+    COUNT(DISTINCT launchid) AS real_launches,
+    ROUND(SUM(CASE WHEN event = 'clk' THEN 1 ELSE 0 END) / COUNT(DISTINCT launchid), 2) AS real_cpul
+FROM ods_RealTime_pcc_quickapp_events
+WHERE timed = CURRENT_DATE()
+    AND brand = 'huawei'
+    AND packagename = 'com.multiple.shop'
+    AND PCCSDKVersion = '4.3.57'
+    AND ggPlatform = 'ylh'
+    AND event IN ('info', 'clk')
+    AND timeh >= 12
+GROUP BY timed, timeh, packagename, PCCSDKVersion, clkV
+ORDER BY timeh DESC, cpul DESC;
+问题: 我想知道今天华为打过电话人，这五天内分别都产生过几次launchid，要显示userid、ip、城市、省份、userid、qaOAIDMD5、launchid
+SQL: %%sql
+WITH hotline_users AS (
+    SELECT DISTINCT userId
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed = CURRENT_DATE()
+        AND brand = 'huawei'
+        AND event = 'clickHotline'
+)
+SELECT 
+    e.userId,
+    c.IP,  -- 从config事件获取
+    c.cityName,  -- 从config事件获取
+    c.regionName,  -- 从config事件获取
+    e.qaOAIDMD5,
+    e.launchId,
+    COUNT(DISTINCT CASE 
+        WHEN e.timed BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 4 DAY) AND CURRENT_DATE() 
+        THEN e.launchId 
+    END) as launchid_count_last_5_days
+FROM ods_RealTime_pcc_quickapp_events e
+JOIN hotline_users hu ON e.userId = hu.userId
+LEFT JOIN ods_RealTime_pcc_quickapp_events c ON e.launchId = c.launchId AND c.event = 'config'
+WHERE e.timed BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 4 DAY) AND CURRENT_DATE()
+    AND e.brand = 'huawei'
+    AND e.event = 'info'
+GROUP BY e.userId, c.IP, c.cityName, c.regionName, e.qaOAIDMD5, e.launchId
+ORDER BY launchid_count_last_5_days DESC;
+
+问题: 我想知道今天华为打过电话人，这五天内分别都产生过几次launchid，要显示userid、ip、城市、省份、userid、qaOAIDMD5、launchid
+SQL: WITH hotline_users AS (
+    SELECT DISTINCT userId
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed = CURRENT_DATE()
+        AND brand = 'huawei'
+        AND event = 'clickHotline'
+)
+SELECT 
+    e.userId,
+    e.IP,
+    e.cityName,
+    e.regionName,
+    e.qaOAIDMD5,
+    e.launchId,
+    COUNT(DISTINCT CASE 
+        WHEN e.timed BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 4 DAY) AND CURRENT_DATE() 
+        THEN e.launchId 
+    END) as launchid_count_last_5_days
+FROM ods_RealTime_pcc_quickapp_events e
+JOIN hotline_users hu ON e.userId = hu.userId
+WHERE e.timed BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 4 DAY) AND CURRENT_DATE()
+    AND e.brand = 'huawei'
+    AND e.event = 'info'
+GROUP BY e.userId, e.IP, e.cityName, e.regionName, e.qaOAIDMD5, e.launchId
+ORDER BY launchid_count_last_5_days DESC;
+
+问题: 我想知道今天华为打过电话人，这五天内分别都产生过几次launchid，要显示userid、ip、城市、省份、userid、qaOAIDMD5、launchid，就只产生过1的不要显示
+SQL: %%sql
+WITH hotline_users AS (
+    SELECT DISTINCT userId
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed = CURRENT_DATE()
+        AND brand = 'huawei'
+        AND event = 'clickHotline'
+),
+user_launch_counts AS (
+    -- 先按用户分组计算每个用户有多少个不同的launchId
+    SELECT 
+        userId,
+        COUNT(DISTINCT launchId) as launch_count
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 4 DAY) AND CURRENT_DATE()
+        AND brand = 'huawei'
+        AND event = 'info'
+        AND userId IN (SELECT userId FROM hotline_users)
+    GROUP BY userId
+    HAVING COUNT(DISTINCT launchId) > 1
+)
+SELECT 
+    e.userId,
+    c.IP,
+    c.cityName,
+    c.regionName,
+    e.qaOAIDMD5,
+    e.launchId,
+    ulc.launch_count
+FROM ods_RealTime_pcc_quickapp_events e
+JOIN user_launch_counts ulc ON e.userId = ulc.userId
+LEFT JOIN ods_RealTime_pcc_quickapp_events c 
+    ON e.launchId = c.launchId AND c.event = 'config'
+WHERE e.timed BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 4 DAY) AND CURRENT_DATE()
+    AND e.brand = 'huawei'
+    AND e.event = 'info'
+GROUP BY e.userId, c.IP, c.cityName, c.regionName, e.qaOAIDMD5, e.launchId, ulc.launch_count
+ORDER BY ulc.launch_count DESC;
+
+问题: 我想知道今天华为打过电话人，这五天内分别都产生过几次launchid，要显示userid、ip、城市、省份、userid、qaOAIDMD5、launchid，就只产生过1的不要显示
+SQL: WITH hotline_users AS (
+    SELECT DISTINCT userId
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed = CURRENT_DATE()
+        AND brand = 'huawei'
+        AND event = 'clickHotline'
+)
+SELECT 
+    e.userId,
+    c.IP,
+    c.cityName,
+    c.regionName,
+    e.qaOAIDMD5,
+    e.launchId,
+    COUNT(DISTINCT CASE 
+        WHEN e.timed BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 4 DAY) AND CURRENT_DATE() 
+        THEN e.launchId 
+    END) as launchid_count_last_5_days
+FROM ods_RealTime_pcc_quickapp_events e
+JOIN hotline_users hu ON e.userId = hu.userId
+LEFT JOIN ods_RealTime_pcc_quickapp_events c ON e.launchId = c.launchId AND c.event = 'config'
+WHERE e.timed BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 4 DAY) AND CURRENT_DATE()
+    AND e.brand = 'huawei'
+    AND e.event = 'info'
+GROUP BY e.userId, c.IP, c.cityName, c.regionName, e.qaOAIDMD5, e.launchId
+HAVING launchid_count_last_5_days > 1
+ORDER BY launchid_count_last_5_days DESC;
+
+问题: 我想知道今天华为和vivo今天打过电话的人，他们在五天内产生过launchid最多的是哪个人，如果数量一样，只需要选取今天最早打电话的那个人的信息显示，要显示userid、qaOAIDMD5、ip、城市、省份、launchid、多少次launchid
+SQL: WITH hotline_users AS (
+    -- 今天打过电话的用户
+    SELECT userId, MIN(timedt) as first_call_time
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed = CURRENT_DATE()
+        AND brand IN ('huawei', 'vivo')
+        AND event = 'clickHotline'
+    GROUP BY userId
+),
+launch_counts AS (
+    -- 统计过去5天内每个用户的launchId数量
+    SELECT 
+        e.userId,
+        COUNT(DISTINCT e.launchId) as launchid_count
+    FROM ods_RealTime_pcc_quickapp_events e
+    JOIN hotline_users hu ON e.userId = hu.userId
+    WHERE e.timed BETWEEN DATE_SUB(CURRENT_DATE(), INTERVAL 4 DAY) AND CURRENT_DATE()
+        AND e.brand IN ('huawei', 'vivo')
+        AND e.event = 'info'
+    GROUP BY e.userId
+),
+max_launch_user AS (
+    -- 找到launchId数量最多的用户，如果数量相同，选择今天最早打电话的用户
+    SELECT 
+        lc.userId,
+        lc.launchid_count,
+        hu.first_call_time
+    FROM launch_counts lc
+    JOIN hotline_users hu ON lc.userId = hu.userId
+    ORDER BY lc.launchid_count DESC, hu.first_call_time ASC
+    LIMIT 1
+)
+SELECT 
+    mlu.userId,
+    e.qaOAIDMD5,
+    c.IP,
+    c.cityName,
+    c.regionName,
+    e.launchId,
+    mlu.launchid_count as total_launchid_count
+FROM max_launch_user mlu
+JOIN ods_RealTime_pcc_quickapp_events e ON mlu.userId = e.userId
+LEFT JOIN ods_RealTime_pcc_quickapp_events c ON e.launchId = c.launchId AND c.event = 'config'
+WHERE e.timed = CURRENT_DATE()
+    AND e.brand IN ('huawei', 'vivo')
+    AND e.event = 'info'
+GROUP BY mlu.userId, e.qaOAIDMD5, c.IP, c.cityName, c.regionName, e.launchId, mlu.launchid_count
+ORDER BY mlu.launchid_count DESC;
+
+问题: 统计一下华为、小米、oppo、vivo、honor，今天广告主出现最多的是哪个，并出现了多少次
+SQL: WITH brand_ad_counts AS (
+    SELECT 
+        brand,
+        ggSource AS advertiser,
+        COUNT(*) AS ad_count,
+        ROW_NUMBER() OVER (PARTITION BY brand ORDER BY COUNT(*) DESC) AS rn
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed = CURRENT_DATE()
+        AND brand IN ('huawei', 'xiaomi', 'oppo', 'vivo', 'honor')
+        AND event = 'imp'
+        AND ggSource IS NOT NULL
+    GROUP BY brand, ggSource
+)
+SELECT 
+    brand,
+    advertiser,
+    ad_count AS appearance_count
+FROM brand_ad_counts
+WHERE rn = 1
+ORDER BY brand;
+
+问题: 统计一下华为、小米、oppo、vivo、honor，今天广告主出现最多的是哪个，并出现了多少次，并让我清楚今天每个手机品牌里哪个人出现这个广告主最多，显示他的userid
+SQL: %%sql
+WITH brand_ad_counts AS (
+    SELECT 
+        brand,
+        ggSource AS advertiser,
+        COUNT(*) AS ad_count,
+        ROW_NUMBER() OVER (PARTITION BY brand ORDER BY COUNT(*) DESC) AS rn
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed = CURRENT_DATE()
+        AND brand IN ('huawei', 'xiaomi', 'oppo', 'vivo', 'honor')
+        AND event = 'imp'
+        AND ggSource IS NOT NULL
+    GROUP BY brand, ggSource
+),
+top_advertiser_per_brand AS (
+    SELECT 
+        brand,
+        advertiser,
+        ad_count
+    FROM brand_ad_counts
+    WHERE rn = 1
+),
+top_user_per_brand AS (
+    SELECT 
+        e.brand,
+        e.ggSource AS advertiser,
+        e.userId,
+        COUNT(*) AS user_ad_count,
+        ROW_NUMBER() OVER (PARTITION BY e.brand ORDER BY COUNT(*) DESC) AS user_rn
+    FROM ods_RealTime_pcc_quickapp_events e
+    JOIN top_advertiser_per_brand t
+        ON e.brand = t.brand AND e.ggSource = t.advertiser
+    WHERE e.timed = CURRENT_DATE()
+        AND e.event = 'imp'
+        AND e.brand IN ('huawei', 'xiaomi', 'oppo', 'vivo', 'honor')
+        AND e.ggSource IS NOT NULL
+        AND e.userId IS NOT NULL  -- 添加这一行条件
+    GROUP BY e.brand, e.ggSource, e.userId
+)
+SELECT 
+    t.brand,
+    t.advertiser AS top_advertiser,
+    t.ad_count AS appearance_count,
+    u.userId AS top_user,
+    u.user_ad_count AS top_user_count
+FROM top_advertiser_per_brand t
+JOIN top_user_per_brand u
+    ON t.brand = u.brand AND u.user_rn = 1
+ORDER BY t.brand;
+
+问题: 统计一下华为、小米、oppo、vivo、honor，今天广告主出现最多的是哪个，并出现了多少次，并让我清楚今天每个手机品牌里哪个人出现这个广告主最多，显示他的userid
+SQL: WITH brand_ad_counts AS (
+    SELECT 
+        brand,
+        ggSource AS advertiser,
+        COUNT(*) AS ad_count,
+        ROW_NUMBER() OVER (PARTITION BY brand ORDER BY COUNT(*) DESC) AS rn
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed = CURRENT_DATE()
+        AND brand IN ('huawei', 'xiaomi', 'oppo', 'vivo', 'honor')
+        AND event = 'imp'
+        AND ggSource IS NOT NULL
+    GROUP BY brand, ggSource
+),
+top_advertiser_per_brand AS (
+    SELECT 
+        brand,
+        advertiser,
+        ad_count
+    FROM brand_ad_counts
+    WHERE rn = 1
+),
+top_user_per_brand AS (
+    SELECT 
+        e.brand,
+        e.ggSource AS advertiser,
+        e.userId,
+        COUNT(*) AS user_ad_count,
+        ROW_NUMBER() OVER (PARTITION BY e.brand ORDER BY COUNT(*) DESC) AS user_rn
+    FROM ods_RealTime_pcc_quickapp_events e
+    JOIN top_advertiser_per_brand t
+        ON e.brand = t.brand AND e.ggSource = t.advertiser
+    WHERE e.timed = CURRENT_DATE()
+        AND e.event = 'imp'
+        AND e.brand IN ('huawei', 'xiaomi', 'oppo', 'vivo', 'honor')
+        AND e.ggSource IS NOT NULL
+    GROUP BY e.brand, e.ggSource, e.userId
+)
+SELECT 
+    t.brand,
+    t.advertiser AS top_advertiser,
+    t.ad_count AS appearance_count,
+    u.userId AS top_user,
+    u.user_ad_count AS top_user_count
+FROM top_advertiser_per_brand t
+JOIN top_user_per_brand u
+    ON t.brand = u.brand AND u.user_rn = 1
+ORDER BY t.brand;
+
+问题: 查一天今天华为买乐多
+1. huawei和ylh广告源的imp和clk
+2. clkv都是多少，分别占了多少
+SQL: WITH event_counts AS (
+    SELECT 
+        ggPlatform AS platform,
+        event,
+        clkV,
+        COUNT(*) AS event_count,
+        (COUNT(*) * 100.0) / SUM(COUNT(*)) OVER (PARTITION BY ggPlatform, event) AS percentage
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed = CURRENT_DATE()
+        AND brand = 'huawei'
+        AND packageName = 'com.multiple.shop'
+        AND ggPlatform IN ('huawei', 'ylh')
+        AND event IN ('imp', 'clk')
+    GROUP BY ggPlatform, event, clkV
+)
+SELECT 
+    platform,
+    event,
+    clkV,
+    event_count,
+    ROUND(percentage, 2) AS percentage
+FROM event_counts
+ORDER BY platform, event, event_count DESC;
+
+问题: huawei和ylh广告源的imp和clk clkv都是多少，分别占了多少 哪个launchid发生的clk和imp发生的最多
+SQL: -- 第一步：计算每个平台、事件、clkV 的事件计数和百分比
+WITH event_counts AS (
+    SELECT 
+        ggPlatform AS platform,
+        event,
+        clkV,
+        COUNT(*) AS event_count,
+        (COUNT(*) * 100.0) / SUM(COUNT(*)) OVER (PARTITION BY ggPlatform, event) AS percentage
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed = CURRENT_DATE()
+        AND brand = 'huawei'
+        AND ggPlatform IN ('huawei', 'ylh')
+        AND event IN ('imp', 'clk')
+    GROUP BY ggPlatform, event, clkV
+),
+-- 第二步：计算每个 launchId 的事件计数，并找到每个平台和事件分组中事件最多的 launchId 及其计数
+launchid_counts AS (
+    SELECT 
+        ggPlatform AS platform,
+        event,
+        launchId,
+        COUNT(*) AS launchid_event_count,
+        ROW_NUMBER() OVER (PARTITION BY ggPlatform, event ORDER BY COUNT(*) DESC) AS rn
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed = CURRENT_DATE()
+        AND brand = 'huawei'
+        AND ggPlatform IN ('huawei', 'ylh')
+        AND event IN ('imp', 'clk')
+    GROUP BY ggPlatform, event, launchId
+),
+-- 第三步：提取每个平台和事件分组中事件最多的 launchId 及其计数
+top_launchid AS (
+    SELECT 
+        platform,
+        event,
+        launchId AS top_launchid,
+        launchid_event_count AS max_event_count
+    FROM launchid_counts
+    WHERE rn = 1
+)
+-- 最终查询：合并事件计数和 top launchId 信息
+SELECT 
+    ec.platform,
+    ec.event,
+    ec.clkV,
+    ec.event_count,
+    ROUND(ec.percentage, 2) AS percentage,
+    tl.top_launchid AS launchid_with_most_events,
+    tl.max_event_count
+FROM event_counts ec
+LEFT JOIN top_launchid tl 
+    ON ec.platform = tl.platform 
+    AND ec.event = tl.event
+ORDER BY ec.platform, ec.event, ec.event_count DESC;
+
+问题: 我想知道今天华为端4.3.57版本和VIVO端，两端分别是哪个人是最早打电话的
+1. 需要显示这俩人的ip、城市、省份、遇到的所有广告主
+SQL: WITH huawei_earliest AS (
+    SELECT 
+        userId,
+        MIN(timedt) as first_call_time,
+        launchId
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed = CURRENT_DATE()
+        AND brand = 'huawei'
+        AND PCCSDKVersion = '4.3.57'
+        AND event = 'clickHotline'
+    GROUP BY userId, launchId
+    ORDER BY first_call_time ASC
+    LIMIT 1
+),
+vivo_earliest AS (
+    SELECT 
+        userId,
+        MIN(timedt) as first_call_time,
+        launchId
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed = CURRENT_DATE()
+        AND brand = 'vivo'
+        AND event = 'clickHotline'
+    GROUP BY userId, launchId
+    ORDER BY first_call_time ASC
+    LIMIT 1
+),
+huawei_details AS (
+    SELECT 
+        h.userId,
+        h.first_call_time,
+        h.launchId,
+        c.IP,
+        c.cityName,
+        c.regionName,
+        GROUP_CONCAT(DISTINCT imp.ggSource) as advertisers
+    FROM huawei_earliest h
+    LEFT JOIN ods_RealTime_pcc_quickapp_events c
+        ON h.launchId = c.launchId
+        AND c.event = 'config'
+        AND c.timed = CURRENT_DATE()
+    LEFT JOIN ods_RealTime_pcc_quickapp_events imp
+        ON h.launchId = imp.launchId
+        AND imp.event = 'imp'
+        AND imp.timed = CURRENT_DATE()
+    GROUP BY h.userId, h.first_call_time, h.launchId, c.IP, c.cityName, c.regionName
+),
+vivo_details AS (
+    SELECT 
+        v.userId,
+        v.first_call_time,
+        v.launchId,
+        c.IP,
+        c.cityName,
+        c.regionName,
+        GROUP_CONCAT(DISTINCT imp.ggSource) as advertisers
+    FROM vivo_earliest v
+    LEFT JOIN ods_RealTime_pcc_quickapp_events c
+        ON v.launchId = c.launchId
+        AND c.event = 'config'
+        AND c.timed = CURRENT_DATE()
+    LEFT JOIN ods_RealTime_pcc_quickapp_events imp
+        ON v.launchId = imp.launchId
+        AND imp.event = 'imp'
+        AND imp.timed = CURRENT_DATE()
+    GROUP BY v.userId, v.first_call_time, v.launchId, c.IP, c.cityName, c.regionName
+)
+SELECT 
+    'Huawei' as brand,
+    userId,
+    first_call_time,
+    launchId,
+    IP,
+    cityName,
+    regionName,
+    advertisers
+FROM huawei_details
+UNION ALL
+SELECT 
+    'Vivo' as brand,
+    userId,
+    first_call_time,
+    launchId,
+    IP,
+    cityName,
+    regionName,
+    advertisers
+FROM vivo_details;
+
+问题: 查询今天OPPO的sourcePackageName，按数量降序排列，仅显示前10个；同时查询今天OPPO按省份统计launchId数量最多的前10个省份。
+SQL: %%sql
+WITH package_counts AS (
+    SELECT 
+        sourcePackageName, 
+        COUNT(*) AS package_count
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed = CURRENT_DATE()
+        AND brand = 'oppo'
+        AND sourcePackageName IS NOT NULL
+        AND sourcePackageName != 'None'
+    GROUP BY sourcePackageName
+    ORDER BY package_count DESC
+    LIMIT 10
+),
+region_counts AS (
+    SELECT 
+        regionName, 
+        COUNT(DISTINCT launchId) AS launch_count
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed = CURRENT_DATE()
+        AND brand = 'oppo'
+        AND regionName IS NOT NULL
+        AND regionName != 'None'
+    GROUP BY regionName
+    ORDER BY launch_count DESC
+    LIMIT 10
+)
+SELECT 
+    category,
+    name,
+    count
+FROM (
+    SELECT 
+        'Source Package Name' AS category,
+        sourcePackageName AS name,
+        package_count AS count
+    FROM package_counts
+    UNION ALL
+    SELECT 
+        'Region by Launch ID' AS category,
+        regionName AS name,
+        launch_count AS count
+    FROM region_counts
+) combined
+ORDER BY category, count DESC;
+
+问题: 查询今天OPPO的sourcePackageName（即来源应用包名），按数量降序排列，仅显示前10个；同时查询今天OPPO按regionName字段统计launchId数量最多的前10个省份。查询时需使用userId进行去重，确保每个用户只被统计一次。
+SQL: WITH package_counts AS (
+    SELECT 
+        sourcePackageName, 
+        COUNT(DISTINCT userId) AS user_count
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed = CURRENT_DATE()
+        AND brand = 'oppo'
+        AND sourcePackageName IS NOT NULL
+        AND sourcePackageName != 'None'
+    GROUP BY sourcePackageName
+    ORDER BY user_count DESC
+    LIMIT 10
+),
+region_counts AS (
+    SELECT 
+        regionName, 
+        COUNT(DISTINCT launchId) AS launch_count
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed = CURRENT_DATE()
+        AND brand = 'oppo'
+        AND regionName IS NOT NULL
+        AND regionName != 'None'
+    GROUP BY regionName
+    ORDER BY launch_count DESC
+    LIMIT 10
+)
+SELECT 
+    category,
+    name,
+    count
+FROM (
+    SELECT 
+        'Source Package Name' AS category,
+        sourcePackageName AS name,
+        user_count AS count
+    FROM package_counts
+    UNION ALL
+    SELECT 
+        'Region by Launch ID' AS category,
+        regionName AS name,
+        launch_count AS count
+    FROM region_counts
+) combined
+ORDER BY category, count DESC;
+
+问题: 帮我统计下huawei广告配置中subDSI为true的launchID，只需要5条
+SQL: %%sql
+SELECT DISTINCT launchId
+FROM ods_RealTime_pcc_quickapp_events
+WHERE timed >= DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY)
+    AND brand = 'huawei'
+    AND event = 'config'
+    AND sceneV4Params IS NOT NULL
+    AND sceneV4Params->'$.layerGgSlot.LayerConf.subDSI' = true
+LIMIT 5;
+
+问题: 帮我统计下今天huawei广告配置中.layerGgSlot.layerConf.ADX_api.cfDiscard=true的launchid，只需要5条
+SQL: SELECT DISTINCT launchId
+FROM ods_RealTime_pcc_quickapp_events
+WHERE timed = CURRENT_DATE()
+    AND brand = 'huawei'
+    AND event = 'config'
+    AND sceneV4Params IS NOT NULL
+    AND sceneV4Params->'$.layerGgSlot.layerConf.ADX_api.cfDiscard' = true
+LIMIT 5;
+
+问题: 帮我统计下今天huawei广告配置中cfDiscard=true的launchid，只需要5条
+SQL: SELECT DISTINCT launchId
+FROM ods_RealTime_pcc_quickapp_events
+WHERE timed = CURRENT_DATE()
+    AND brand = 'huawei'
+    AND event = 'config'
+    AND sceneV4Params IS NOT NULL
+    AND sceneV4Params->'$.layerGgSlot.layerConf.ADX_api.cfDiscard' = true
+LIMIT 5;
+
+问题: 帮我统计下今天huawei广告配置中cfDiscard=true的launchid，只需要5条，并且显示这五条launchid产生过的广告主名字
+SQL: SELECT 
+    e.launchId,
+    GROUP_CONCAT(DISTINCT imp.ggSource) AS advertisers
+FROM ods_RealTime_pcc_quickapp_events e
+LEFT JOIN ods_RealTime_pcc_quickapp_events imp
+    ON e.launchId = imp.launchId
+    AND imp.event = 'imp'
+    AND imp.timed >= CURRENT_DATE()
+    AND imp.timed < DATE_ADD(CURRENT_DATE(), INTERVAL 1 DAY)
+WHERE e.timed >= CURRENT_DATE()
+    AND e.timed < DATE_ADD(CURRENT_DATE(), INTERVAL 1 DAY)
+    AND e.brand = 'huawei'
+    AND e.event = 'config'
+    AND e.sceneV4Params IS NOT NULL
+    AND e.sceneV4Params->'$.layerGgSlot.layerConf.ADX_api.cfDiscard' = true
+GROUP BY e.launchId
+LIMIT 5;
+
+问题: 帮我统计下今天huawei广告配置中cfDiscard=true的launchid，只需要5条，并且显示这五条launchid产生过的广告主名字
+SQL: SELECT 
+    e.launchId,
+    GROUP_CONCAT(DISTINCT imp.ggSource) AS advertisers
+FROM ods_RealTime_pcc_quickapp_events e
+LEFT JOIN ods_RealTime_pcc_quickapp_events imp
+    ON e.launchId = imp.launchId
+    AND imp.event = 'imp'
+    AND imp.timed = CURRENT_DATE()
+WHERE e.timed = CURRENT_DATE()
+    AND e.brand = 'huawei'
+    AND e.event = 'config'
+    AND e.sceneV4Params IS NOT NULL
+    AND e.sceneV4Params->'$.layerGgSlot.layerConf.ADX_api.cfDiscard' = true
+GROUP BY e.launchId
+LIMIT 5;
+
+问题: 帮我统计下今天huawei广告配置中cfDiscard=true的launchid，只需要5条，并且显示这五条launchid产生过的广告主名字
+SQL: SELECT 
+    e.launchId,
+    GROUP_CONCAT(DISTINCT imp.ggSource) AS advertisers
+FROM ods_RealTime_pcc_quickapp_events e
+LEFT JOIN ods_RealTime_pcc_quickapp_events imp
+    ON e.launchId = imp.launchId
+    AND imp.event = 'imp'
+    AND imp.timed >= CURRENT_DATE()
+    AND imp.timed < DATE_ADD(CURRENT_DATE(), INTERVAL 1 DAY)
+WHERE e.timed >= CURRENT_DATE()
+    AND e.timed < DATE_ADD(CURRENT_DATE(), INTERVAL 1 DAY)
+    AND e.brand = 'huawei'
+    AND e.event = 'config'
+    AND e.sceneV4Params IS NOT NULL
+    AND get_json_bool(e.sceneV4Params, '$.layerGgSlot.layerConf.ADX_api.cfDiscard') = true
+GROUP BY e.launchId
+LIMIT 5;
+
+问题: 帮我查一下今天
+1. 华为11:30:00到11:40:00
+2. 省份是吉林
+3. 打过电话
+需要显示launchid、userid、model、ip、省份、城市
+SQL: %%sql
+SELECT DISTINCT 
+    e.launchId,
+    e.userId,
+    i.model,
+    c.IP,
+    c.regionName AS province,
+    c.cityName
+FROM ods_RealTime_pcc_quickapp_events e
+LEFT JOIN ods_RealTime_pcc_quickapp_events i
+    ON e.launchId = i.launchId
+    AND i.event = 'info'
+    AND i.timed = CURRENT_DATE()
+    AND i.brand = 'huawei'
+LEFT JOIN ods_RealTime_pcc_quickapp_events c
+    ON e.launchId = c.launchId
+    AND c.event = 'config'
+    AND c.timed = CURRENT_DATE()
+    AND c.brand = 'huawei'
+WHERE e.timed = CURRENT_DATE()
+    AND e.brand = 'huawei'
+    AND e.event = 'clickHotline'
+    AND e.timedt BETWEEN TIMESTAMP(CONCAT(CURRENT_DATE(), ' 11:30:00')) 
+                     AND TIMESTAMP(CONCAT(CURRENT_DATE(), ' 11:40:00'))
+    AND e.regionName = '吉林';
+
+问题: 帮我看一下今天vivo的ylh广告源，版本是4.8.2，`ggParams`->'$.deepInfo.customized_invoke_url'没有值的launchid，显示3条launchid
+SQL: SELECT DISTINCT launchId
+FROM ods_RealTime_pcc_quickapp_events
+WHERE timed >= CURRENT_DATE()
+    AND timed < DATE_ADD(CURRENT_DATE(), INTERVAL 1 DAY)
+    AND brand = 'vivo'
+    AND ggPlatform = 'ylh'
+    AND PCCSDKVersion = '4.8.2'
+    AND event IN ('imp', 'clk', 'send2')
+    AND (ggParams IS NULL OR GET_JSON_STRING(ggParams, '$.deepInfo.customized_invoke_url') IS NULL)
+LIMIT 3;
+
+问题: 查询今天VIVO手机imp事件里impPosition = layer，但是没有clk事件后又有imp事件里impPosition = layer，显示3个launchid
+SQL: WITH layer_imps AS (
+    SELECT DISTINCT launchId, reqId, timedt
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed = CURRENT_DATE()
+        AND brand = 'vivo'
+        AND event = 'imp'
+        AND impPosition = 'layer'
+),
+clk_events AS (
+    SELECT DISTINCT launchId, reqId
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed = CURRENT_DATE()
+        AND brand = 'vivo'
+        AND event = 'clk'
+),
+layer_imps_after_no_clk AS (
+    SELECT li1.launchId
+    FROM layer_imps li1
+    LEFT JOIN clk_events c
+        ON li1.launchId = c.launchId
+        AND li1.reqId = c.reqId
+    JOIN layer_imps li2
+        ON li1.launchId = li2.launchId
+        AND li1.reqId != li2.reqId
+        AND li1.timedt < li2.timedt
+    WHERE c.reqId IS NULL
+    GROUP BY li1.launchId
+    LIMIT 3
+)
+SELECT launchId
+FROM layer_imps_after_no_clk;
+
+问题: 查询今天VIVO手机imp事件里impPosition = layer，但是没有clk事件后又有imp事件里impPosition = layer，显示占比
+SQL: WITH layer_imps AS (
+    SELECT DISTINCT launchId, reqId, timedt
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed = CURRENT_DATE()
+        AND brand = 'vivo'
+        AND event = 'imp'
+        AND impPosition = 'layer'
+),
+clk_events AS (
+    SELECT DISTINCT launchId, reqId
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed = CURRENT_DATE()
+        AND brand = 'vivo'
+        AND event = 'clk'
+),
+total_layer_launchids AS (
+    SELECT COUNT(DISTINCT launchId) AS total_count
+    FROM layer_imps
+),
+layer_imps_after_no_clk AS (
+    SELECT COUNT(DISTINCT li1.launchId) AS matching_count
+    FROM layer_imps li1
+    LEFT JOIN clk_events c
+        ON li1.launchId = c.launchId
+        AND li1.reqId = c.reqId
+    JOIN layer_imps li2
+        ON li1.launchId = li2.launchId
+        AND li1.reqId != li2.reqId
+        AND li1.timedt < li2.timedt
+    WHERE c.reqId IS NULL
+)
+SELECT 
+    ROUND(layer_imps_after_no_clk.matching_count / NULLIF(total_layer_launchids.total_count, 0), 4) AS proportion
+FROM layer_imps_after_no_clk, total_layer_launchids;
+
+问题: 查一下今天和昨天VIVO分别有多少个userid，分时显示，因为我想知道昨天和今天的每小时差距有多深（userid是每个用户唯一的标识）
+SQL: WITH hourly_user_counts AS (
+    SELECT 
+        DATE_FORMAT(timedt, '%Y-%m-%d %H:00:00') AS hour_start,
+        brand,
+        COUNT(DISTINCT userId) AS unique_users
+    FROM ods_RealTime_pcc_quickapp_events
+    WHERE timed IN (CURRENT_DATE(), DATE_SUB(CURRENT_DATE(), 1))
+        AND brand = 'vivo'
+    GROUP BY DATE_FORMAT(timedt, '%Y-%m-%d %H:00:00'), brand
+)
+SELECT 
+    hour_start,
+    unique_users AS vivo_users_today,
+    LAG(unique_users) OVER (PARTITION BY HOUR(hour_start) ORDER BY hour_start) AS vivo_users_yesterday,
+    unique_users - LAG(unique_users) OVER (PARTITION BY HOUR(hour_start) ORDER BY hour_start) AS user_difference
+FROM hourly_user_counts
+ORDER BY hour_start DESC;
+
+问题: 查一下今天华为有多少个launchid，需要排除命中了安全策略的用户（securityName）
+SQL: SELECT COUNT(DISTINCT launchId) as launchid_count
+FROM ods_RealTime_pcc_quickapp_events e
+WHERE timed = CURRENT_DATE()
+    AND brand = 'huawei'
+    AND NOT EXISTS (
+        SELECT 1
+        FROM ods_RealTime_pcc_quickapp_events s
+        WHERE s.launchId = e.launchId
+            AND s.timed = CURRENT_DATE()
+            AND s.event = 'config'
+            AND s.securityName IS NOT NULL
+    );
+
+问题: 查一下4.10号到4.29号，来路包名是com.zenmen.palmchat的华为手机且进来的packageName要是com.multiple.shop且需要userid like '%938'，需要显示时间、launchid、userid、点击过的广告主名字、packageName、sourcePackageName，如果使用join就必须把join的timed也加上，避免全盘扫描IO直接干满
+SQL: SELECT 
+    e.timedt,
+    e.launchId,
+    e.userId,
+    GROUP_CONCAT(DISTINCT imp.ggSource) AS clicked_advertisers,
+    e.packageName,
+    e.sourcePackageName
+FROM ods_RealTime_pcc_quickapp_events e
+LEFT JOIN ods_RealTime_pcc_quickapp_events imp
+    ON e.launchId = imp.launchId
+    AND imp.event = 'clk'
+    AND imp.timed BETWEEN '2025-04-10' AND '2025-04-30'
+WHERE e.timed BETWEEN '2025-04-10' AND '2025-04-30'
+    AND e.brand = 'huawei'
+    AND e.sourcePackageName = 'com.zenmen.palmchat'
+    AND e.packageName = 'com.multiple.shop'
+    AND e.userId LIKE '%938'
+    AND e.event = 'info'
+GROUP BY e.timedt, e.launchId, e.userId, e.packageName, e.sourcePackageName
+ORDER BY e.timedt DESC;
+
+问题: 帮我查一下oppo手机2025年4月30号17:00:00-17:40:00点击过clickComplain的人，省份需要是广西的，要显示launchid、userid、qaOAIDMD5、model、packageName、sourcePackageName、省份、城市
+SQL: %%sql
+SELECT DISTINCT 
+    e.launchId, 
+    e.userId, 
+    e.qaOAIDMD5, 
+    i.model, 
+    e.packageName, 
+    i.sourcePackageName, 
+    c.regionName, 
+    c.cityName
+FROM ods_RealTime_pcc_quickapp_events e
+LEFT JOIN ods_RealTime_pcc_quickapp_events c
+    ON e.launchId = c.launchId
+    AND c.event = 'config'
+    AND c.timed = '2025-04-30'
+LEFT JOIN ods_RealTime_pcc_quickapp_events i
+    ON e.launchId = i.launchId
+    AND i.event = 'info'
+    AND i.timed = '2025-04-30'
+WHERE e.timed = '2025-04-30'
+    AND e.brand = 'oppo'
+    AND e.event = 'clickComplain'
+    AND c.regionName = '广西'
+    AND e.timedt BETWEEN '2025-04-30 17:00:00' AND '2025-04-30 17:40:00';

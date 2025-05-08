@@ -1,0 +1,8 @@
+[
+  {
+    "question": "帮我查一下oppo手机2025年4月30号17:00:00-17:40:00点击过clickComplain的人，省份需要是广西的，要显示launchid、userid、qaOAIDMD5、model、packageName、sourcePackageName、省份、城市",
+    "sql": "%%sql\nSELECT DISTINCT \n    e.launchId, \n    e.userId, \n    e.qaOAIDMD5, \n    i.model, \n    e.packageName, \n    i.sourcePackageName, \n    c.regionName, \n    c.cityName\nFROM ods_RealTime_pcc_quickapp_events e\nLEFT JOIN ods_RealTime_pcc_quickapp_events c\n    ON e.launchId = c.launchId\n    AND c.event = 'config'\n    AND c.timed = '2025-04-30'\nLEFT JOIN ods_RealTime_pcc_quickapp_events i\n    ON e.launchId = i.launchId\n    AND i.event = 'info'\n    AND i.timed = '2025-04-30'\nWHERE e.timed = '2025-04-30'\n    AND e.brand = 'oppo'\n    AND e.event = 'clickComplain'\n    AND c.regionName = '广西'\n    AND e.timedt BETWEEN '2025-04-30 17:00:00' AND '2025-04-30 17:40:00';",
+    "type": "correct",
+    "time": "2025-05-08T11:49:27.515043"
+  }
+]

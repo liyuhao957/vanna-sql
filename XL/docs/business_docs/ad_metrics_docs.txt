@@ -1,0 +1,223 @@
+# 广告指标分析文档
+
+## 华为买乐多4.3.57版本广告指标分析
+问题: 分析华为买乐多4.3.57版本的广告指标，包括用户覆盖率、点击率、收入和ECPM等核心指标
+SQL: %%sql
+WITH base AS (
+    -- 基础信息和指标计算的联合查询
+    SELECT 
+        a.timed, 
+        a.timeh, 
+        a.packagename, 
+        a.PCCSDKVersion,
+        a.launchid,
+        b.uniqueid,
+        b.traceid,
+        b.imp,
+        b.clk,
+        b.impuv,
+        b.clkuv,
+        b.layerImp,
+        b.bottomImp,
+        b.layerWinprice,
+        b.bottomWinprice,
+        b.winprice,
+        b.adbClk
+    FROM (
+        -- 获取华为买乐多4.3.57版本基础信息
+        SELECT DISTINCT 
+            timed, timeh, packagename, PCCSDKVersion, launchid
+        FROM ods.ods_RealTime_pcc_quickapp_events
+        WHERE timed >= SUBDATE(CURDATE(), 0)
+            AND event = 'info'
+            AND brand = 'huawei'
+            AND packagename = 'com.multiple.shop'
+            AND PCCSDKVersion = '4.3.57'
+    ) a
+    LEFT JOIN (
+        -- 计算关键指标，保持与原SQL相同的事件筛选和计算逻辑
+        SELECT 
+            timed, 
+            launchid, 
+            uniqueid, 
+            userid,
+            traceid,
+            SUM(CASE WHEN event = 'info' THEN 1 ELSE 0 END) AS info,
+            SUM(CASE WHEN event = 'req2' THEN 1 ELSE 0 END) AS req2,
+            COUNT(DISTINCT CASE WHEN event = 'req2' THEN uniqueid END) AS req2uv,
+            SUM(CASE WHEN event = 'send2' THEN 1 ELSE 0 END) AS send2,
+            SUM(CASE WHEN event = 'imp' THEN 1 ELSE 0 END) AS imp,
+            COUNT(DISTINCT CASE WHEN event = 'imp' THEN uniqueid END) AS impuv,
+            SUM(CASE WHEN event = 'imp' AND (impPosition = 'layer' OR reqid LIKE 'layer%') THEN 1 ELSE 0 END) AS layerImp,
+            SUM(CASE WHEN event = 'imp' AND (impPosition = 'bottom' OR reqid LIKE 'bottom%') THEN 1 ELSE 0 END) AS bottomImp,
+            SUM(CASE WHEN event = 'imp' AND (impPosition = 'layer' OR reqid LIKE 'layer%') THEN winprice / 100000 ELSE 0 END) AS layerWinprice,
+            SUM(CASE WHEN event = 'imp' AND (impPosition = 'bottom' OR reqid LIKE 'bottom%') THEN winprice / 100000 ELSE 0 END) AS bottomWinprice,
+            SUM(CASE WHEN event = 'imp' THEN winprice / 100000 ELSE 0 END) AS winprice,
+            SUM(CASE WHEN event = 'clk' THEN 1 ELSE 0 END) AS clk,
+            COUNT(DISTINCT CASE WHEN event = 'clk' THEN uniqueid END) AS clkuv,
+            SUM(CASE WHEN event = 'clk' AND clkv = '2' THEN 1 ELSE 0 END) AS adbClk,
+            SUM(CASE WHEN event = 'cls' THEN 1 ELSE 0 END) AS cls,
+            SUM(CASE WHEN event = 'err' THEN 1 ELSE 0 END) AS err
+        FROM ods.ods_RealTime_pcc_quickapp_events
+        WHERE timed >= SUBDATE(CURDATE(), 0)
+            AND event IN ('info', 'req2', 'send2', 'imp', 'clk', 'cls', 'err')
+            AND launchid IN (
+                SELECT launchid FROM ods.ods_RealTime_pcc_quickapp_events
+                WHERE timed >= SUBDATE(CURDATE(), 0)
+                    AND event = 'info'
+                    AND brand = 'huawei'
+                    AND packagename = 'com.multiple.shop'
+                    AND PCCSDKVersion = '4.3.57'
+            )
+        GROUP BY timed, launchid, uniqueid, userid, traceid
+    ) b ON a.timed = b.timed AND a.launchid = b.launchid
+    LEFT JOIN (
+        SELECT
+            timed,
+            launchId,
+            sceneV4Name AS sceneName,
+            sceneid,
+            sceneV4AB
+        FROM
+            ods.ods_RealTime_pcc_quickapp_events
+        WHERE
+            timed >= SUBDATE(CURDATE(), 0)
+            AND event = 'config'
+    ) config ON config.timed = b.timed AND config.launchid = b.launchid
+)
+SELECT
+    timed,
+    timeh,
+    packagename,
+    PCCSDKVersion AS sdk,
+    COUNT(DISTINCT launchid) AS launchid_uv,
+    COUNT(DISTINCT traceid) AS traceid_uv,
+    COUNT(DISTINCT uniqueid) AS uniqueid_uv,
+    ROUND(SUM(impuv) / COUNT(DISTINCT uniqueid), 2) AS 曝光用户占比,
+    ROUND(SUM(clkuv) / COUNT(DISTINCT uniqueid), 2) AS 点击用户占比,
+    ROUND(SUM(imp) / COUNT(DISTINCT uniqueid), 2) AS ipuu,
+    ROUND(SUM(clk) / COUNT(DISTINCT uniqueid), 2) AS cpuu,
+    ROUND(SUM(winprice) / COUNT(DISTINCT uniqueid), 4) AS arpuu,
+    ROUND(SUM(imp) / COUNT(DISTINCT launchid), 2) AS ipul,
+    ROUND(SUM(clk) / COUNT(DISTINCT launchid), 2) AS cpul,
+    ROUND(SUM(winprice) / COUNT(DISTINCT launchid), 4) AS arpul,
+    ROUND(SUM(layerImp) / COUNT(DISTINCT launchid), 2) AS layer_ipul,
+    ROUND(SUM(bottomImp) / COUNT(DISTINCT launchid), 2) AS bottom_ipul,
+    ROUND(SUM(clk) / NULLIF(SUM(imp), 0), 2) AS ctr,
+    ROUND(SUM(clk) / NULLIF(SUM(layerImp), 0), 2) AS layer_ctr,
+    ROUND(SUM(adbClk) / NULLIF(SUM(clk), 0), 2) AS adb_rate,
+    ROUND(SUM(winprice), 2) AS preincome,
+    ROUND(SUM(winprice) / NULLIF(SUM(imp), 0) * 1000, 2) AS ecpm,
+    ROUND(SUM(layerWinprice) / NULLIF(SUM(layerImp), 0) * 1000, 2) AS layer_ecpm,
+    ROUND(SUM(bottomWinprice) / NULLIF(SUM(bottomImp), 0) * 1000, 2) AS bottom_ecpm,
+    ROUND(SUM(winprice) / NULLIF(SUM(clk), 0), 2) AS cpc
+FROM base
+WHERE timed >= SUBDATE(CURDATE(), 0)
+GROUP BY timed, timeh, packagename, PCCSDKVersion
+ORDER BY timed, timeh;
+
+## 广告指标计算说明
+问题: 解释广告分析中各指标的计算方法和意义
+SQL: %%sql
+-- 以下是主要广告指标的计算方法和解释
+-- 曝光用户占比 = 曝光用户数 / 总用户数
+-- 点击用户占比 = 点击用户数 / 总用户数
+-- ipuu (每用户曝光数) = 总曝光量 / 总用户数
+-- cpuu (每用户点击数) = 总点击量 / 总用户数
+-- arpuu (每用户收入) = 总收入 / 总用户数
+-- ipul (每次启动曝光数) = 总曝光量 / 总启动数
+-- cpul (每次启动点击数) = 总点击量 / 总启动数
+-- arpul (每次启动收入) = 总收入 / 总启动数
+-- layer_ipul (每次启动弹窗曝光数) = 弹窗曝光量 / 总启动数
+-- bottom_ipul (每次启动底部曝光数) = 底部曝光量 / 总启动数
+-- ctr (点击率) = 总点击量 / 总曝光量
+-- layer_ctr (弹窗点击率) = 总点击量 / 弹窗曝光量
+-- adb_rate (广告库点击率) = 广告库点击量 / 总点击量
+-- preincome (预估收入) = 总winprice值
+-- ecpm (千次曝光收入) = 总收入 / 总曝光量 * 1000
+-- layer_ecpm (弹窗千次曝光收入) = 弹窗收入 / 弹窗曝光量 * 1000
+-- bottom_ecpm (底部千次曝光收入) = 底部收入 / 底部曝光量 * 1000
+-- cpc (每次点击成本) = 总收入 / 总点击量
+
+## 广告位置分析
+问题: 分析不同广告位置(弹窗和底部)的表现差异
+SQL: %%sql
+WITH base AS (
+    SELECT 
+        timed,
+        packagename,
+        impPosition,
+        COUNT(DISTINCT reqid) AS impressions,
+        COUNT(DISTINCT CASE WHEN event = 'clk' THEN reqid END) AS clicks,
+        SUM(winprice / 100000) AS revenue
+    FROM ods.ods_RealTime_pcc_quickapp_events
+    WHERE timed >= SUBDATE(CURDATE(), 0)
+        AND event IN ('imp', 'clk')
+        AND brand = 'huawei'
+        AND packagename = 'com.multiple.shop'
+    GROUP BY timed, packagename, impPosition
+)
+SELECT
+    timed,
+    packagename,
+    impPosition,
+    impressions,
+    clicks,
+    ROUND(clicks / NULLIF(impressions, 0), 3) AS ctr,
+    revenue,
+    ROUND(revenue / NULLIF(impressions, 0) * 1000, 2) AS ecpm
+FROM base
+WHERE impPosition IN ('layer', 'bottom')
+ORDER BY timed, packagename, impPosition;
+
+## 按小时分析广告指标
+问题: 按小时分析华为买乐多应用的广告指标
+SQL: %%sql
+SELECT
+    timed,
+    timeh,
+    packagename,
+    COUNT(DISTINCT launchid) AS launches,
+    COUNT(DISTINCT uniqueid) AS users,
+    SUM(CASE WHEN event = 'imp' THEN 1 ELSE 0 END) AS impressions,
+    SUM(CASE WHEN event = 'clk' THEN 1 ELSE 0 END) AS clicks,
+    ROUND(SUM(CASE WHEN event = 'clk' THEN 1 ELSE 0 END) / NULLIF(SUM(CASE WHEN event = 'imp' THEN 1 ELSE 0 END), 0), 3) AS ctr,
+    SUM(CASE WHEN event = 'imp' THEN winprice / 100000 ELSE 0 END) AS revenue,
+    ROUND(SUM(CASE WHEN event = 'imp' THEN winprice / 100000 ELSE 0 END) / NULLIF(SUM(CASE WHEN event = 'imp' THEN 1 ELSE 0 END), 0) * 1000, 2) AS ecpm
+FROM ods.ods_RealTime_pcc_quickapp_events
+WHERE timed >= SUBDATE(CURDATE(), 0)
+    AND event IN ('info', 'imp', 'clk')
+    AND brand = 'huawei'
+    AND packagename = 'com.multiple.shop'
+GROUP BY timed, timeh, packagename
+ORDER BY timed, timeh;
+
+## 广告术语解释
+问题: 解释广告分析中使用的各种术语和字段
+SQL: %%sql
+-- 广告分析中常用术语解释
+-- timed: 日期
+-- timeh: 小时
+-- packagename: 应用包名
+-- PCCSDKVersion: SDK版本号
+-- launchid: 启动ID，标识一次应用启动
+-- uniqueid: 用户唯一标识
+-- traceid: 追踪ID
+-- userid: 用户ID
+-- event: 事件类型，如info(基本信息)、req2(请求)、send2(发送)、imp(曝光)、clk(点击)、cls(关闭)、err(错误)
+-- impPosition: 广告曝光位置，如layer(弹窗)、bottom(底部)
+-- reqid: 请求ID
+-- winprice: 广告竞价价格，单位为分/100000
+-- clkv: 点击版本
+-- adbClk: 广告库点击
+-- impuv: 曝光用户数
+-- clkuv: 点击用户数
+-- ipuu: 每用户曝光数
+-- cpuu: 每用户点击数
+-- arpuu: 每用户收入
+-- ipul: 每次启动曝光数
+-- cpul: 每次启动点击数
+-- arpul: 每次启动收入
+-- ctr: 点击率
+-- ecpm: 千次曝光收入
+-- cpc: 每次点击成本

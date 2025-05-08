@@ -1,0 +1,21 @@
+# Python缓存
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 虚拟环境
+venv/
+.env/
+.env.bak/
+*.env
+
+# macOS
+.DS_Store
+
+# 日志和数据库
+*.log
+chroma.sqlite3
+
+# 忽略所有形如UUID的目录（8-4-4-4-12位十六进制）
+[0-9a-fA-F]*-*-*-*-*

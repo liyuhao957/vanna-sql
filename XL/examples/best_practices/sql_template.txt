@@ -1,0 +1,35 @@
+# SQL查询模板 - 必须严格遵循
+
+## 正确的SQL响应格式
+
+每个SQL查询响应必须以下列格式开始：
+
+```
+%%sql
+SELECT ...
+```
+
+## 正确示例
+
+问题: 查询今日活跃用户数
+答案: 
+%%sql
+SELECT 
+    COUNT(DISTINCT userId) as active_users
+FROM events_table
+WHERE date = CURRENT_DATE();
+
+## 错误示例 - 不要这样做
+
+问题: 查询今日活跃用户数
+答案: 
+SELECT 
+    COUNT(DISTINCT userId) as active_users
+FROM events_table 
+WHERE date = CURRENT_DATE();
+
+## 要点提醒
+- 每个SQL查询都必须以%%sql开头
+- 这个前缀确保SQL可以在Jupyter环境中直接执行
+- 忽略此规则将导致用户必须手动添加前缀
+- 没有例外情况 - 所有SQL响应都必须遵循此格式 

@@ -1,0 +1,397 @@
+# StarRocks 数据库最佳实践
+
+## 查询优化基础
+1. 宽表查询时，必须使用分区字段（如timed）进行过滤，避免全表扫描
+   - 示例: WHERE timed >= '2023-01-01' AND timed < '2023-01-02'
+
+2. 大数据量表需谨慎使用ORDER BY
+   - 避免: SELECT * FROM large_table ORDER BY column1
+   - 推荐: SELECT specific_column1, specific_column2 FROM large_table ORDER BY column1
+
+3. 计算耗时预期
+   - 按天、小时计算的逻辑，通常需要几秒到10分钟，这是正常的
+   - 没有报内存不足等错误的情况下，无需特别关注
+
+4. 避免全表扫描
+   - 避免: SELECT *, SELECT COUNT(*)
+   - 推荐: SELECT 必要字段, COUNT(1), SUM(CASE WHEN condition THEN 1 ELSE 0 END)
+
+5. 窗口函数使用
+   - 掌握: ROW_NUMBER() OVER(), DENSE_RANK() OVER(), LEAD(), LAG()
+   - 窗口函数文档: https://docs.starrocks.com/zh-cn/main/using_starrocks/Window_function
+
+6. 频繁使用的SQL查询
+   - 使用CTE (WITH子句)封装为临时表缓存
+   - 示例: WITH temp_table AS (SELECT ... FROM ...)
+
+7. 复杂实时查询优化
+   - 创建物化视图
+   - 选择合适的JOIN类型
+   - 优化索引选择
+   - 使用CBO优化
+   - 执行计划优化
+
+8. JOIN顺序优化
+   - 将大表设置为左表
+   - 小表构建Hash表效果更好
+
+9. 行转列技巧
+   - 使用Lateral Join
+   - 参考: https://docs.starrocks.io/zh-cn/2.5/using_starrocks/Lateral_join
+
+10. 分页优化
+    - 使用OFFSET方式分页
+    - 参考: https://docs.starrocks.io/zh-cn/2.5/sql-reference/sql-statements/data-manipulation/SELECT#offset
+
+11. JOIN操作必须使用分区字段(timed)
+    - 无论是INNER JOIN、LEFT JOIN还是RIGHT JOIN，与大表关联时务必添加分区字段条件
+    - 即使在子查询或CTE中已经过滤了日期，JOIN时仍需使用分区字段条件
+    - 避免: JOIN large_table ON id = large_table.id
+    - 推荐: JOIN large_table ON id = large_table.id AND large_table.timed = CURRENT_DATE()
+    - 这是关键优化项，直接影响查询性能和集群稳定性
+
+## 查询模式示例
+
+### 使用分区过滤
+```sql
+SELECT user_id, action 
+FROM user_actions 
+WHERE timed >= '2023-06-01' AND timed < '2023-06-02'
+LIMIT 100;
+```
+
+### 避免使用SELECT *
+```sql
+-- 避免
+SELECT * FROM orders ORDER BY create_time DESC;
+
+-- 推荐
+SELECT order_id, user_id, total_amount 
+FROM orders 
+ORDER BY create_time DESC;
+```
+
+### 使用窗口函数
+```sql
+SELECT 
+    user_id,
+    order_amount,
+    ROW_NUMBER() OVER(PARTITION BY user_id ORDER BY order_amount DESC) as rank
+FROM orders
+WHERE timed >= '2023-06-01' AND timed < '2023-06-02';
+```
+
+### 使用WITH子句
+```sql
+WITH daily_sales AS (
+    SELECT 
+        DATE_FORMAT(timed, '%Y-%m-%d') as day,
+        SUM(amount) as total_sales
+    FROM orders
+    WHERE timed >= '2023-06-01' AND timed < '2023-07-01'
+    GROUP BY DATE_FORMAT(timed, '%Y-%m-%d')
+)
+SELECT * FROM daily_sales ORDER BY total_sales DESC;
+```
+
+### JOIN操作使用分区字段
+```sql
+-- 错误示例：没有在JOIN条件中使用分区字段
+WITH user_actions AS (
+    SELECT user_id, action_time 
+    FROM user_events 
+    WHERE timed = CURRENT_DATE() AND event_type = 'login'
+)
+SELECT ua.user_id, o.order_id
+FROM user_actions ua
+JOIN orders o ON ua.user_id = o.user_id -- 没有添加分区条件，会导致扫描整个orders表
+WHERE o.status = 'completed';
+
+-- 正确示例：在JOIN条件中添加分区字段
+WITH user_actions AS (
+    SELECT user_id, action_time 
+    FROM user_events 
+    WHERE timed = CURRENT_DATE() AND event_type = 'login'
+)
+SELECT ua.user_id, o.order_id
+FROM user_actions ua
+JOIN orders o ON ua.user_id = o.user_id 
+    AND o.timed = CURRENT_DATE() -- 添加分区条件，限制只扫描当天数据
+WHERE o.status = 'completed';
+```
+
+### 多表JOIN都需要使用分区字段
+```sql
+-- 正确示例：复杂的多表JOIN，每个JOIN都添加了分区条件
+WITH impressions AS (
+    SELECT user_id, ad_id, imp_time
+    FROM ad_impressions
+    WHERE timed = CURRENT_DATE()
+)
+SELECT i.user_id, i.ad_id, c.click_time, p.purchase_amount
+FROM impressions i
+LEFT JOIN ad_clicks c ON i.user_id = c.user_id 
+    AND i.ad_id = c.ad_id 
+    AND c.timed = CURRENT_DATE() -- JOIN添加分区条件
+LEFT JOIN user_purchases p ON i.user_id = p.user_id 
+    AND p.purchase_time > i.imp_time 
+    AND p.timed = CURRENT_DATE() -- JOIN添加分区条件
+WHERE i.imp_time > '2023-08-01 00:00:00';
+```
+
+## StarRocks语法限制与解决方案
+
+### 1. GROUP BY子句中不能使用子查询
+StarRocks不允许在GROUP BY子句中使用子查询，这是一个重要的语法限制。
+
+错误示例:
+```sql
+-- 这将导致错误
+SELECT 
+    CASE 
+        WHEN version = (SELECT MAX(version) FROM table) THEN version
+        ELSE 'Old Version' 
+    END AS version_group,
+    COUNT(*) as count
+FROM table
+GROUP BY 
+    CASE 
+        WHEN version = (SELECT MAX(version) FROM table) THEN version
+        ELSE 'Old Version' 
+    END;
+```
+
+正确解决方案:
+```sql
+-- 使用WITH子句预先计算结果
+WITH max_version AS (
+    SELECT MAX(version) AS latest_version
+    FROM table
+)
+SELECT 
+    CASE 
+        WHEN version = m.latest_version THEN version
+        ELSE 'Old Version' 
+    END AS version_group,
+    COUNT(*) as count
+FROM table, max_version m
+GROUP BY 
+    CASE 
+        WHEN version = m.latest_version THEN version
+        ELSE 'Old Version' 
+    END;
+```
+
+### 2. 不支持FULL OUTER JOIN
+StarRocks目前不支持FULL OUTER JOIN，但可以用UNION组合LEFT JOIN和RIGHT JOIN模拟。
+
+错误示例:
+```sql
+-- 这将导致错误
+SELECT a.id, b.value
+FROM table_a a
+FULL OUTER JOIN table_b b ON a.id = b.id;
+```
+
+正确解决方案:
+```sql
+-- 使用UNION组合LEFT JOIN和RIGHT JOIN
+SELECT a.id, b.value
+FROM table_a a
+LEFT JOIN table_b b ON a.id = b.id
+UNION ALL
+SELECT a.id, b.value
+FROM table_a a
+RIGHT JOIN table_b b ON a.id = b.id
+WHERE a.id IS NULL;
+```
+
+### 3. 子查询的限制
+StarRocks在子查询方面有一些限制，特别是在WHERE子句中使用相关子查询时。
+
+错误示例:
+```sql
+-- 可能导致错误或性能问题
+SELECT * FROM table_a
+WHERE id IN (SELECT id FROM table_b WHERE table_b.ref = table_a.ref);
+```
+
+正确解决方案:
+```sql
+-- 使用JOIN替代相关子查询
+SELECT DISTINCT a.*
+FROM table_a a
+JOIN table_b b ON a.id = b.id AND a.ref = b.ref;
+```
+
+### 4. ORDER BY必须跟GROUP BY列
+在SELECT语句中使用GROUP BY时，ORDER BY子句中的列必须出现在GROUP BY中。
+
+错误示例:
+```sql
+-- 这将导致错误
+SELECT category, COUNT(*) as count
+FROM products
+GROUP BY category
+ORDER BY product_name;
+```
+
+正确解决方案:
+```sql
+-- 确保ORDER BY列出现在GROUP BY中，或是聚合函数
+SELECT category, COUNT(*) as count
+FROM products
+GROUP BY category
+ORDER BY category; -- 或者 ORDER BY COUNT(*)
+```
+
+### 5. LIMIT必须是常量
+StarRocks中的LIMIT子句必须是常量值，不能是表达式或子查询。
+
+错误示例:
+```sql
+-- 这将导致错误
+SELECT * FROM table
+LIMIT (SELECT count FROM settings WHERE name = 'limit_value');
+```
+
+正确解决方案:
+```sql
+-- 使用常量值
+SELECT * FROM table
+LIMIT 100;
+```
+
+### 6. JOIN条件必须是等值连接
+StarRocks优化器对非等值JOIN支持有限，最好使用等值连接。
+
+错误示例:
+```sql
+-- 性能可能较差
+SELECT a.*, b.*
+FROM table_a a
+JOIN table_b b ON a.timestamp < b.timestamp;
+```
+
+正确解决方案:
+```sql
+-- 尽量使用等值连接
+SELECT a.*, b.*
+FROM table_a a
+JOIN table_b b ON a.id = b.id;
+```
+
+### 7. 子查询的嵌套层数限制
+StarRocks对子查询嵌套层数有限制，过深的嵌套可能导致错误。
+
+错误示例:
+```sql
+-- 嵌套层数过多
+SELECT * FROM table_a
+WHERE id IN (SELECT id FROM table_b 
+             WHERE value > (SELECT avg(value) FROM table_c 
+                            WHERE region IN (SELECT region FROM table_d)));
+```
+
+正确解决方案:
+```sql
+-- 使用WITH子句分解复杂查询
+WITH avg_values AS (
+    SELECT avg(value) as avg_value FROM table_c
+    WHERE region IN (SELECT region FROM table_d)
+),
+filtered_b AS (
+    SELECT id FROM table_b, avg_values
+    WHERE value > avg_values.avg_value
+)
+SELECT * FROM table_a
+WHERE id IN (SELECT id FROM filtered_b);
+```
+
+### 8. 避免在HAVING子句中使用复杂表达式
+StarRocks对HAVING子句中的复杂表达式支持有限。
+
+错误示例:
+```sql
+-- 可能导致错误
+SELECT category, SUM(sales) as total_sales
+FROM sales
+GROUP BY category
+HAVING SUM(sales) > (SELECT AVG(total) FROM (SELECT SUM(sales) as total FROM sales GROUP BY date));
+```
+
+正确解决方案:
+```sql
+-- 使用WITH子句简化
+WITH daily_sales AS (
+    SELECT date, SUM(sales) as total
+    FROM sales
+    GROUP BY date
+),
+avg_sales AS (
+    SELECT AVG(total) as avg_daily_sales
+    FROM daily_sales
+)
+SELECT category, SUM(sales) as total_sales
+FROM sales, avg_sales
+GROUP BY category
+HAVING SUM(sales) > avg_sales.avg_daily_sales;
+```
+
+### 9. 除法和NULL值处理
+StarRocks中除法操作需要注意处理除数为0或NULL的情况。
+
+错误示例:
+```sql
+-- 可能导致除零错误
+SELECT amount / clicks as cpc
+FROM ad_metrics;
+```
+
+正确解决方案:
+```sql
+-- 使用NULLIF避免除零错误
+SELECT amount / NULLIF(clicks, 0) as cpc
+FROM ad_metrics;
+```
+
+### 10. 版本对比查询模式
+当需要比较最新版本与旧版本数据时，务必使用CTE预先获取最大版本号。
+
+错误示例:
+```sql
+-- 这种写法在StarRocks中会报错
+SELECT 
+    CASE 
+        WHEN version = (SELECT MAX(version) FROM app_metrics) THEN 'Latest'
+        ELSE 'Old' 
+    END AS version_type,
+    COUNT(*) as count
+FROM app_metrics
+GROUP BY 
+    CASE 
+        WHEN version = (SELECT MAX(version) FROM app_metrics) THEN 'Latest'
+        ELSE 'Old' 
+    END;
+```
+
+正确解决方案:
+```sql
+-- 使用WITH子句预先获取最大版本
+WITH max_ver AS (
+    SELECT MAX(version) as latest_version
+    FROM app_metrics
+)
+SELECT 
+    CASE 
+        WHEN version = m.latest_version THEN 'Latest'
+        ELSE 'Old' 
+    END AS version_type,
+    COUNT(*) as count
+FROM app_metrics, max_ver m
+GROUP BY 
+    CASE 
+        WHEN version = m.latest_version THEN 'Latest'
+        ELSE 'Old' 
+    END;
+``` 
