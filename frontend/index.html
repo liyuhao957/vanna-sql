@@ -190,6 +190,40 @@
                         <button class="btn btn-success me-2" onclick="sendFeedback('correct')">结果正确</button>
                         <button class="btn btn-danger" onclick="showCorrectionBox()">结果错误</button>
                     </div>
+                    <!-- 新增SQL修正Tab区 -->
+                    <ul class="nav nav-tabs mt-4" id="fixTab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="auto-tab" data-bs-toggle="tab" data-bs-target="#auto-fix" type="button" role="tab">自动修正SQL（推荐）</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="manual-tab" data-bs-toggle="tab" data-bs-target="#manual-fix" type="button" role="tab">手动修正SQL</button>
+                        </li>
+                    </ul>
+                    <div class="tab-content border border-top-0 rounded-bottom p-4 bg-light" id="fixTabContent" style="min-height:220px;">
+                        <!-- 自动修正 -->
+                        <div class="tab-pane fade show active" id="auto-fix" role="tabpanel">
+                            <div class="mb-3">
+                                <label for="auto-error-message" class="form-label">请输入数据库报错信息：</label>
+                                <textarea class="form-control" id="auto-error-message" rows="3" placeholder="粘贴数据库报错信息"></textarea>
+                            </div>
+                            <button class="btn btn-primary" id="auto-fix-btn">修正SQL</button>
+                            <span id="auto-fix-loading" style="display:none; margin-left:10px; color:#1976d2; font-weight:bold;">修正中...</span>
+                            <div id="auto-fix-result" class="mt-3"></div>
+                        </div>
+                        <!-- 手动修正 -->
+                        <div class="tab-pane fade" id="manual-fix" role="tabpanel">
+                            <div class="mb-3">
+                                <label for="manual-sql" class="form-label">请输入原始SQL：</label>
+                                <textarea class="form-control mb-2" id="manual-sql" rows="3" placeholder="粘贴需要修正的SQL"></textarea>
+                                <label for="manual-error-message" class="form-label">请输入数据库报错信息：</label>
+                                <textarea class="form-control" id="manual-error-message" rows="3" placeholder="粘贴数据库报错信息"></textarea>
+                            </div>
+                            <button class="btn btn-primary" id="manual-fix-btn">修正SQL</button>
+                            <span id="manual-fix-loading" style="display:none; margin-left:10px; color:#1976d2; font-weight:bold;">修正中...</span>
+                            <div id="manual-fix-result" class="mt-3"></div>
+                        </div>
+                    </div>
+                    <!-- 结束SQL修正Tab区 -->
                     <!-- 错误修正弹窗 -->
                     <div id="correction-modal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#fff; box-shadow:0 2px 16px #1976d2a0; border-radius:10px; padding:24px 28px; z-index:10000; min-width:320px;">
                         <h5 style="margin-bottom:10px;">请修正SQL后提交：</h5>
@@ -387,6 +421,73 @@ function deleteFeedback(time) {
         showToast(data.msg || '反馈已撤销');
         showFeedbackHistory(); // 刷新列表
     });
+}
+// SQL修正Tab功能
+// 自动修正
+const autoFixBtn = document.getElementById('auto-fix-btn');
+const autoFixLoading = document.getElementById('auto-fix-loading');
+const autoFixResult = document.getElementById('auto-fix-result');
+autoFixBtn.onclick = async function() {
+    const errorMsg = document.getElementById('auto-error-message').value.trim();
+    if (!errorMsg) { showToast('请填写报错信息'); return; }
+    autoFixLoading.style.display = 'inline';
+    autoFixBtn.disabled = true;
+    autoFixResult.innerHTML = '';
+    try {
+        const formData = new FormData();
+        formData.append('error_message', errorMsg);
+        const res = await fetch('/api/fix_sql_auto', {method:'POST', body:formData});
+        const data = await res.json();
+        if (data.success) {
+            autoFixResult.innerHTML = `<label class='form-label'>修正后的SQL：</label><pre id='auto-fixed-sql' class='bg-white p-2 rounded'>${data.fixed_sql}</pre><button class='btn btn-outline-secondary btn-sm' onclick='copyAutoFixedSQL()'>一键复制</button>`;
+        } else {
+            autoFixResult.innerHTML = `<span style='color:red;'>${data.msg}</span>`;
+        }
+    } catch (e) {
+        autoFixResult.innerHTML = '<span style="color:red;">请求失败，请重试。</span>';
+    } finally {
+        autoFixLoading.style.display = 'none';
+        autoFixBtn.disabled = false;
+    }
+};
+function copyAutoFixedSQL() {
+    const sql = document.getElementById('auto-fixed-sql').innerText;
+    navigator.clipboard.writeText(sql);
+    showToast('修正后的SQL已复制！');
+}
+// 手动修正
+const manualFixBtn = document.getElementById('manual-fix-btn');
+const manualFixLoading = document.getElementById('manual-fix-loading');
+const manualFixResult = document.getElementById('manual-fix-result');
+manualFixBtn.onclick = async function() {
+    const sql = document.getElementById('manual-sql').value.trim();
+    const errorMsg = document.getElementById('manual-error-message').value.trim();
+    if (!sql || !errorMsg) { showToast('请填写SQL和报错信息'); return; }
+    manualFixLoading.style.display = 'inline';
+    manualFixBtn.disabled = true;
+    manualFixResult.innerHTML = '';
+    try {
+        const formData = new FormData();
+        formData.append('sql', sql);
+        formData.append('error_message', errorMsg);
+        const res = await fetch('/api/fix_sql_manual', {method:'POST', body:formData});
+        const data = await res.json();
+        if (data.success) {
+            manualFixResult.innerHTML = `<label class='form-label'>修正后的SQL：</label><pre id='manual-fixed-sql' class='bg-white p-2 rounded'>${data.fixed_sql}</pre><button class='btn btn-outline-secondary btn-sm' onclick='copyManualFixedSQL()'>一键复制</button>`;
+        } else {
+            manualFixResult.innerHTML = `<span style='color:red;'>${data.msg}</span>`;
+        }
+    } catch (e) {
+        manualFixResult.innerHTML = '<span style="color:red;">请求失败，请重试。</span>';
+    } finally {
+        manualFixLoading.style.display = 'none';
+        manualFixBtn.disabled = false;
+    }
+};
+function copyManualFixedSQL() {
+    const sql = document.getElementById('manual-fixed-sql').innerText;
+    navigator.clipboard.writeText(sql);
+    showToast('修正后的SQL已复制！');
 }
 </script>
 </body>

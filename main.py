@@ -1,5 +1,5 @@
 import os
-from fastapi import FastAPI, Request, UploadFile, File, Form
+from fastapi import FastAPI, Request, UploadFile, File, Form, Body
 from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -79,12 +79,46 @@ async def train(
     except Exception as e:
         return {"success": False, "msg": f"训练失败: {e}"}
 
+# 记录最近一次生成的SQL
+LAST_SQL = {'sql': None}
+
+@app.post("/api/fix_sql_auto")
+async def fix_sql_auto(error_message: str = Form(...)):
+    """自动修正：只需报错信息，自动获取最近SQL"""
+    if not LAST_SQL['sql']:
+        return {"success": False, "msg": "未找到最近生成的SQL，请先生成SQL。"}
+    prompt = f"""你是SQL修正专家。下面有一个原始SQL和数据库报错信息。\n请严格遵循以下要求：\n1. 只修正导致报错的部分；\n2. 不要重写SQL结构，不要改变查询目标和业务逻辑；\n3. 只输出修正后的SQL，不要解释。\n\n原始SQL：\n{LAST_SQL['sql']}\n\n数据库报错信息：\n{error_message}\n"""
+    try:
+        response = client.chat.completions.create(
+            model="grok-3-beta",
+            messages=[{"role": "user", "content": prompt}]
+        )
+        fixed_sql = response.choices[0].message.content.strip()
+        return {"success": True, "fixed_sql": fixed_sql}
+    except Exception as e:
+        return {"success": False, "msg": f"修正失败: {e}"}
+
+@app.post("/api/fix_sql_manual")
+async def fix_sql_manual(sql: str = Form(...), error_message: str = Form(...)):
+    """手动修正：用户输入SQL和报错信息"""
+    prompt = f"""你是SQL修正专家。下面有一个原始SQL和数据库报错信息。\n请严格遵循以下要求：\n1. 只修正导致报错的部分；\n2. 不要重写SQL结构，不要改变查询目标和业务逻辑；\n3. 只输出修正后的SQL，不要解释。\n\n原始SQL：\n{sql}\n\n数据库报错信息：\n{error_message}\n"""
+    try:
+        response = client.chat.completions.create(
+            model="grok-3-beta",
+            messages=[{"role": "user", "content": prompt}]
+        )
+        fixed_sql = response.choices[0].message.content.strip()
+        return {"success": True, "fixed_sql": fixed_sql}
+    except Exception as e:
+        return {"success": False, "msg": f"修正失败: {e}"}
+
+# 修改SQL生成接口，记录最近一次SQL
 @app.post("/api/generate_sql")
 async def generate_sql(question: str = Form(...)):
-    """生成SQL接口"""
     try:
         sql = vn.generate_sql(question)
         sql_with_prefix = f"%%sql\n{sql.strip()}"
+        LAST_SQL['sql'] = sql_with_prefix
         return {"success": True, "sql": sql_with_prefix}
     except Exception as e:
         return {"success": False, "msg": f"生成SQL失败: {e}"}
