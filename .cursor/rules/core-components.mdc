@@ -1,0 +1,39 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Vanna SQL核心组件
+
+这个系统的核心组件及其功能说明：
+
+## 后端组件
+
+主要在[main.py](mdc:main.py)文件中实现：
+
+- **MyVanna类** - 系统核心类，继承自ChromaDB_VectorStore和OpenAI_Chat，负责:
+  - 向量存储和检索
+  - 模型调用和生成
+  - 训练数据管理
+
+- **FastAPI应用** - Web后端，主要负责：
+  - API接口提供
+  - 静态文件服务
+  - 训练数据管理
+  - SQL生成和修正
+  - 规则管理
+
+## 前端组件
+
+位于[frontend/index.html](mdc:frontend/index.html)和[frontend/style.css](mdc:frontend/style.css)：
+
+- **训练数据管理界面** - 支持DDL、文档、SQL示例、问题-SQL对训练
+- **SQL生成界面** - 输入自然语言，生成SQL
+- **SQL修正功能** - 自动和手动两种SQL修正模式
+- **规则管理界面** - 管理和编辑SQL生成规则
+
+## 数据存储
+
+- **ChromaDB向量数据库** - 存储训练数据的向量表示
+- **rules.json** - 存储系统规则
+- **feedback_log.json** - 记录用户反馈

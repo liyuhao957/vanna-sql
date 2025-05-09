@@ -19,6 +19,22 @@ class MyVanna(ChromaDB_VectorStore, OpenAI_Chat):
         ChromaDB_VectorStore.__init__(self, config=config)
         OpenAI_Chat.__init__(self, config=config)
 
+    def get_context(self, question):
+        initial_prompt = None
+        question_sql_list = self.get_similar_question_sql(question)
+        ddl_list = self.get_related_ddl(question)
+        doc_list = self.get_related_documentation(question)
+        message_log = self.get_sql_prompt(
+            initial_prompt=initial_prompt,
+            question=question,
+            question_sql_list=question_sql_list,
+            ddl_list=ddl_list,
+            doc_list=doc_list
+        )
+        if message_log and len(message_log) > 0 and 'content' in message_log[0]:
+            return message_log[0]['content']
+        return ""
+
 # 请替换为你自己的openai或xai key
 from openai import OpenAI
 client = OpenAI(
@@ -209,6 +225,12 @@ async def optimize_sql_with_rag(
         prompt = f"""
 你是SQL优化专家。下面有数据库结构、字段说明、历史示例、原始SQL、实际查询结果和用户的真实需求描述。
 请根据所有信息，优化SQL，使其能正确返回用户想要的结果。
+【分析要求】
+请先分析实际查询结果与用户需求的差异，判断异常原因（如SQL逻辑错误、字段拼写、join条件、聚合逻辑、结果为空、重复、溢出、类型不符、None/NULL等）。
+- 针对不同异常，给出最合适的SQL修正方案。
+- 只做必要的修正，避免一刀切。
+- 如果SQL本身没问题但数据异常，请考虑是否需要加过滤、去重、类型转换等。
+- 如果SQL有语法或逻辑错误，请直接修正。
 【数据库结构和字段说明】
 {rag_context}
 
@@ -224,12 +246,13 @@ async def optimize_sql_with_rag(
 """
         response = client.chat.completions.create(
             model="grok-3-beta",
-            messages=[{"role": "user", "content": prompt}]
+            messages=[{"role": "system", "content": prompt}],
+            temperature=0.2,
         )
-        optimized_sql = response.choices[0].message.content.strip()
-        return {"success": True, "optimized_sql": optimized_sql}
+        sql = response.choices[0].message.content.strip()
+        return {"sql": sql}
     except Exception as e:
-        return {"success": False, "msg": f"SQL优化失败: {e}"}
+        return {"error": f"SQL优化失败: {e}"}
 
 RULES_FILE = "rules.json"
 RULES_LOCK = threading.Lock()

@@ -1,0 +1,54 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Vanna SQL系统开发指南
+
+开发和扩展Vanna SQL系统的指南：
+
+## 环境设置
+
+1. 使用Python虚拟环境：
+   ```bash
+   python3 -m venv venv
+   source venv/bin/activate  # Windows: venv\Scripts\activate
+   ```
+
+2. 安装依赖：
+   ```bash
+   pip install fastapi uvicorn vanna chromadb openai python-multipart tqdm
+   ```
+
+## 代码架构
+
+- **后端**: [main.py](mdc:main.py) 包含所有API接口和核心逻辑
+- **前端**: [frontend/index.html](mdc:frontend/index.html) 单页面应用含所有UI组件
+
+## 扩展指南
+
+### 添加新API接口
+
+1. 在[main.py](mdc:main.py)中添加新的FastAPI路由
+2. 实现相关功能逻辑
+3. 在前端中添加对应的API调用
+
+### 前端修改
+
+修改[frontend/index.html](mdc:frontend/index.html)添加新UI组件或功能：
+
+1. 主要区域：训练区、SQL生成区、规则管理区
+2. 使用Bootstrap布局和样式
+3. 使用jQuery处理前端逻辑和API调用
+
+### 添加新训练数据类型
+
+1. 修改[main.py](mdc:main.py)中的`/api/train`接口
+2. 更新`MyVanna`类中的训练逻辑
+3. 在前端添加对应的表单
+
+### 添加新的规则类型
+
+1. 修改[rules.json](mdc:rules.json)规则模板
+2. 更新规则管理API
+3. 修改前端规则管理界面

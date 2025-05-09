@@ -1,0 +1,44 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Vanna SQL生成和修正功能
+
+系统的SQL生成和修正功能流程：
+
+## SQL生成流程
+
+1. 用户输入自然语言问题
+2. 系统使用[main.py](mdc:main.py)中的`/api/generate_sql`接口
+3. Vanna使用向量检索找到相关上下文
+4. 调用大模型（grok-3-beta）生成SQL
+5. 返回SQL并记录到`LAST_SQL`变量
+
+## SQL修正功能
+
+系统提供两种修正模式：
+
+1. **自动修正模式**：
+   - 接口：`/api/fix_sql_auto`
+   - 只需提供错误信息，自动获取最近一次生成的SQL
+   - 调用大模型修正SQL
+
+2. **手动修正模式**：
+   - 接口：`/api/fix_sql_manual`
+   - 需手动提供SQL和错误信息
+   - 适合修复任意来源的SQL
+
+## 结果不符优化功能
+
+- 接口：`/api/optimize_sql_with_rag`
+- 当SQL执行无错但结果不符合预期时使用
+- 自动拼接RAG上下文（数据库结构、字段说明等）
+- 调用大模型优化SQL
+
+## 规则系统
+
+使用[rules.json](mdc:rules.json)存储SQL生成规则：
+
+- 规则类型包括：分区过滤、ORDER BY限制、JOIN优化等
+- 通过`/api/rules`系列接口管理规则

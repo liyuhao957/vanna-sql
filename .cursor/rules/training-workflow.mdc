@@ -1,0 +1,39 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Vanna SQL训练工作流程
+
+Vanna系统的训练工作流程和相关文件：
+
+## 训练数据来源
+
+系统支持四种类型的训练数据：
+
+1. **DDL** - 数据库表结构定义
+2. **文档** - 业务术语、规则和说明
+3. **SQL示例** - 常用SQL查询样例
+4. **问题-SQL对** - 自然语言问题与对应SQL
+
+## 训练脚本
+
+- [train_all.py](mdc:train_all.py) - 完整训练流程，按推荐顺序训练：
+  1. DDL（表结构）
+  2. 业务文档/解释
+  3. SQL示例（常用查询）
+  4. 问题-SQL对
+
+- [train_local_data.py](mdc:train_local_data.py) - 仅训练本地数据
+
+- [optimize_training_data.py](mdc:optimize_training_data.py) - 优化训练数据文件
+
+## 训练数据文件
+
+- [XL/train/all_training_pairs.json](mdc:XL/train/all_training_pairs.json) - 优化后的问题-SQL对训练数据
+- XL/docs/ - 包含表结构、属性和业务文档
+- XL/examples/ - 包含SQL示例和最佳实践
+
+## Web端训练接口
+
+通过[main.py](mdc:main.py)中的`/api/train`接口提供Web训练功能，支持所有训练数据类型。

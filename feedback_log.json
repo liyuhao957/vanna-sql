@@ -4,5 +4,17 @@
     "sql": "%%sql\nSELECT DISTINCT \n    e.launchId, \n    e.userId, \n    e.qaOAIDMD5, \n    i.model, \n    e.packageName, \n    i.sourcePackageName, \n    c.regionName, \n    c.cityName\nFROM ods_RealTime_pcc_quickapp_events e\nLEFT JOIN ods_RealTime_pcc_quickapp_events c\n    ON e.launchId = c.launchId\n    AND c.event = 'config'\n    AND c.timed = '2025-04-30'\nLEFT JOIN ods_RealTime_pcc_quickapp_events i\n    ON e.launchId = i.launchId\n    AND i.event = 'info'\n    AND i.timed = '2025-04-30'\nWHERE e.timed = '2025-04-30'\n    AND e.brand = 'oppo'\n    AND e.event = 'clickComplain'\n    AND c.regionName = '广西'\n    AND e.timedt BETWEEN '2025-04-30 17:00:00' AND '2025-04-30 17:40:00';",
     "type": "correct",
     "time": "2025-05-08T11:49:27.515043"
+  },
+  {
+    "question": "统计今天华为好时光有多少个userid，并查询今天哪个userid下面的launchid最多（每个launchid代表进入了应用一次）",
+    "sql": "%%sql\nWITH user_counts AS (\n    -- 统计今天华为好时光的用户总数\n    SELECT COUNT(DISTINCT userId) AS 用户总数\n    FROM ods_RealTime_pcc_quickapp_events\n    WHERE timed = CURRENT_DATE()\n        AND brand = 'huawei'\n        AND packageName = 'com.good.time'\n),\nlaunch_counts AS (\n    -- 查询每个用户的launchId数量，找出最多的\n    SELECT \n        userId AS 用户ID,\n        COUNT(DISTINCT launchId) AS 启动次数\n    FROM ods_RealTime_pcc_quickapp_events\n    WHERE timed = CURRENT_DATE()\n        AND brand = 'huawei'\n        AND packageName = 'com.good.time'\n        AND userId IS NOT NULL\n    GROUP BY userId\n    ORDER BY 启动次数 DESC\n    LIMIT 1\n)\nSELECT \n    uc.用户总数,\n    lc.用户ID AS launchId最多的用户,\n    lc.启动次数 AS 该用户的launchId次数\nFROM user_counts uc\nCROSS JOIN launch_counts lc;",
+    "type": "incorrect",
+    "time": "2025-05-09T11:07:36.599815"
+  },
+  {
+    "question": "查找2025年5月9号11:00:00-5月9号11:15:00的人\n1. OPPO手机\n2. 省份是江苏\n3. 触发过clickComplain\n需要显示timedt 、launchid、usedrid、qaOAIDMD5、model、packageName、sourcePackageName、regionName、cityName，按时间倒序排序",
+    "sql": "%%sql\nSELECT DISTINCT \n    e.timedt,\n    e.launchId, \n    e.userId, \n    e.qaOAIDMD5, \n    i.model, \n    e.packageName, \n    i.sourcePackageName, \n    c.regionName, \n    c.cityName\nFROM ods_RealTime_pcc_quickapp_events e\nLEFT JOIN ods_RealTime_pcc_quickapp_events c\n    ON e.launchId = c.launchId\n    AND c.event = 'config'\n    AND c.timed = '2025-05-09'\nLEFT JOIN ods_RealTime_pcc_quickapp_events i\n    ON e.launchId = i.launchId\n    AND i.event = 'info'\n    AND i.timed = '2025-05-09'\nWHERE e.timed = '2025-05-09'\n    AND e.brand = 'oppo'\n    AND e.event = 'clickComplain'\n    AND c.regionName = '江苏'\n    AND e.timedt BETWEEN '2025-05-09 11:00:00' AND '2025-05-09 11:15:00'\nORDER BY e.timedt DESC;",
+    "type": "correct",
+    "time": "2025-05-09T11:46:06.220571"
   }
 ]

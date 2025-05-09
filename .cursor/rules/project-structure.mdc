@@ -1,0 +1,27 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Vanna SQL项目结构
+
+这个项目是一个使用Vanna库构建的自然语言到SQL查询转换系统。
+
+## 主要文件和目录
+
+- [main.py](mdc:main.py) - 主程序入口，包含FastAPI后端逻辑和API接口
+- [train_all.py](mdc:train_all.py) - 完整训练流程脚本，按官方推荐顺序执行
+- [train_local_data.py](mdc:train_local_data.py) - 本地数据训练脚本
+- [optimize_training_data.py](mdc:optimize_training_data.py) - 训练数据优化脚本
+- [README.md](mdc:README.md) - 项目说明文档
+- [XL/](mdc:XL/) - 训练数据和参考文档目录
+- [frontend/](mdc:frontend/) - 前端界面文件
+
+## 数据和文档结构
+
+训练数据和参考文档位于XL目录：
+- [XL/train/](mdc:XL/train/) - 标准化训练数据
+- [XL/docs/table_docs/](mdc:XL/docs/table_docs/) - 表结构文档
+- [XL/docs/attribute_docs/](mdc:XL/docs/attribute_docs/) - 属性说明文档
+- [XL/docs/business_docs/](mdc:XL/docs/business_docs/) - 业务逻辑文档
+- [XL/examples/](mdc:XL/examples/) - SQL示例和最佳实践

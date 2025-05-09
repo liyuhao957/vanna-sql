@@ -328,7 +328,7 @@ async function loadTrainingData() {
         if(data.data.length === 0) { list.innerHTML = '暂无训练数据'; return; }
         list.innerHTML = data.data.map(item =>
             `<div class='border rounded p-2 mb-1 small training-card'>
-                <button class='btn btn-sm btn-danger mt-1' onclick='deleteTrainingData("${item.id}")'>删除</button>
+                <button class='btn btn-danger btn-sm mt-1' onclick='deleteTrainingData("${item.id}")'><span class='icon-trash'>🗑️</span>删除</button>
                 <div class='card-content'>
                     <b>ID:</b> ${item.id || ''}<br>
                     <b>类型:</b> ${item.training_data_type || ''}<br>
@@ -454,7 +454,7 @@ function showFeedbackHistory() {
                 <td style='max-width:260px;word-break:break-all;'><pre style='margin:0;font-size:0.95em;'>${item.sql ? item.sql : ''}</pre></td>
                 <td>${item.type || ''}</td>
                 <td style='font-size:0.95em;'>${item.time ? item.time.replace('T',' ').replace(/\..*$/, '') : ''}</td>
-                <td><button class='btn btn-sm btn-danger' onclick="deleteFeedback('${item.time}')">撤销</button></td>
+                <td><button class='btn btn-danger btn-sm' onclick="deleteFeedback('${item.time}')"><span class='icon-trash'>🗑️</span>撤销</button></td>
             </tr>`;
         });
         html += '</tbody></table>';
