@@ -178,6 +178,21 @@ pre {
   gap: 8px;
   margin-bottom: 10px;
 }
+.feedback-question, .feedback-sql {
+  transition: background 0.15s, max-height 0.2s;
+}
+.feedback-collapsed {
+  max-height: 2.8em !important;
+  overflow: hidden !important;
+  background: none !important;
+  cursor: pointer;
+}
+.feedback-expanded {
+  max-height: 1000px !important;
+  background: #e3eafc !important;
+  z-index: 2;
+  cursor: pointer;
+}
 .feedback-question {
   font-weight: 600;
   color: #1976d2;

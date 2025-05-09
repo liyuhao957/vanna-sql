@@ -16,5 +16,11 @@
     "sql": "%%sql\nSELECT DISTINCT \n    e.timedt,\n    e.launchId, \n    e.userId, \n    e.qaOAIDMD5, \n    i.model, \n    e.packageName, \n    i.sourcePackageName, \n    c.regionName, \n    c.cityName\nFROM ods_RealTime_pcc_quickapp_events e\nLEFT JOIN ods_RealTime_pcc_quickapp_events c\n    ON e.launchId = c.launchId\n    AND c.event = 'config'\n    AND c.timed = '2025-05-09'\nLEFT JOIN ods_RealTime_pcc_quickapp_events i\n    ON e.launchId = i.launchId\n    AND i.event = 'info'\n    AND i.timed = '2025-05-09'\nWHERE e.timed = '2025-05-09'\n    AND e.brand = 'oppo'\n    AND e.event = 'clickComplain'\n    AND c.regionName = '江苏'\n    AND e.timedt BETWEEN '2025-05-09 11:00:00' AND '2025-05-09 11:15:00'\nORDER BY e.timedt DESC;",
     "type": "correct",
     "time": "2025-05-09T11:46:06.220571"
+  },
+  {
+    "question": "我想查询今天VIVO的红莲剧场err占比，需要显示包名、brand、errcode、errmsg、人数（launchid）、占比（显示前10）",
+    "sql": "%%sql\nSELECT \n    packageName AS 包名,\n    brand AS 品牌,\n    errCode AS 错误代码,\n    errMsg AS 错误信息,\n    COUNT(DISTINCT launchId) AS 人数,\n    ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (PARTITION BY packageName, brand), 2) AS 占比\nFROM ods_RealTime_pcc_quickapp_events\nWHERE timed = CURRENT_DATE()\n    AND brand = 'vivo'\n    AND packageName = 'com.redlotus.theater'\n    AND event = 'err'\nGROUP BY packageName, brand, errCode, errMsg\nORDER BY 人数 DESC\nLIMIT 10;",
+    "type": "correct",
+    "time": "2025-05-09T12:19:27.328970"
   }
 ]

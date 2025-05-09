@@ -220,7 +220,6 @@ async def optimize_sql_with_rag(
 ):
     """结果不符时的SQL优化，自动拼接RAG上下文"""
     try:
-        # 获取RAG上下文（DDL、文档、历史SQL等）
         rag_context = vn.get_context(user_intent)
         prompt = f"""
 你是SQL优化专家。下面有数据库结构、字段说明、历史示例、原始SQL、实际查询结果和用户的真实需求描述。
@@ -249,10 +248,10 @@ async def optimize_sql_with_rag(
             messages=[{"role": "system", "content": prompt}],
             temperature=0.2,
         )
-        sql = response.choices[0].message.content.strip()
-        return {"sql": sql}
+        sql = response.choices[0].message.content.strip() if response.choices and response.choices[0].message and response.choices[0].message.content else ""
+        return {"success": True, "sql": sql, "raw_response": response.model_dump()}
     except Exception as e:
-        return {"error": f"SQL优化失败: {e}"}
+        return {"success": False, "error": f"SQL优化失败: {e}"}
 
 RULES_FILE = "rules.json"
 RULES_LOCK = threading.Lock()

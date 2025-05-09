@@ -448,11 +448,11 @@ function showFeedbackHistory() {
             return;
         }
         let html = `<div class='feedback-card-list'>`;
-        data.data.forEach(item => {
+        data.data.forEach((item, idx) => {
             html += `<div class='feedback-card'>
                 <div class='feedback-main'>
-                    <div class='feedback-question' title='${item.question ? item.question.replace(/'/g, "&apos;") : ''}'>${item.question ? item.question : ''}</div>
-                    <div class='feedback-sql' title='${item.sql ? item.sql.replace(/'/g, "&apos;") : ''}'>${item.sql ? item.sql : ''}</div>
+                    <div class='feedback-question feedback-collapsed' data-idx='${idx}' title='点击展开/收起'>${item.question ? item.question : ''}</div>
+                    <div class='feedback-sql feedback-collapsed' data-idx='${idx}' title='点击展开/收起'>${item.sql ? item.sql : ''}</div>
                 </div>
                 <div class='feedback-meta'>
                     <span class='feedback-type'>${item.type || ''}</span>
@@ -469,6 +469,13 @@ function showFeedbackHistory() {
             if(t){
                 span.innerText = friendlyTime(t);
             }
+        });
+        // 点击展开/收起
+        document.querySelectorAll('.feedback-question, .feedback-sql').forEach(function(div){
+            div.onclick = function(){
+                this.classList.toggle('feedback-expanded');
+                this.classList.toggle('feedback-collapsed');
+            };
         });
     });
 }
@@ -582,11 +589,14 @@ optimizeFixBtn.onclick = async function() {
         formData.append('user_intent', intent);
         const res = await fetch('/api/optimize_sql_with_rag', {method:'POST', body:formData});
         const data = await res.json();
-        if (data.success) {
-            optimizeFixResult.innerHTML = `<label class='form-label'>优化后的SQL：</label><pre id='optimize-fixed-sql' class='bg-white p-2 rounded'>${data.optimized_sql}</pre><button class='btn btn-outline-secondary btn-sm' onclick='copyOptimizeFixedSQL()'>一键复制</button>`;
-        } else {
-            optimizeFixResult.innerHTML = `<span style='color:red;'>${data.msg}</span>`;
-        }
+        // 只显示优化后的SQL
+        optimizeFixResult.innerHTML = `
+            <div>
+                <label class='form-label'>优化后的SQL：</label>
+                <pre id='optimize-fixed-sql' class='bg-white p-2 rounded'>${data.sql || ''}</pre>
+            </div>
+            ${data.error ? `<div style='color:red;'>${data.error}</div>` : ''}
+        `;
     } catch (e) {
         optimizeFixResult.innerHTML = '<span style="color:red;">请求失败，请重试。</span>';
     } finally {
