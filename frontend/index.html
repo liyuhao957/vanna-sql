@@ -447,18 +447,29 @@ function showFeedbackHistory() {
             listDiv.innerHTML = '暂无反馈记录';
             return;
         }
-        let html = `<table class='table table-bordered table-sm'><thead><tr><th>问题</th><th>SQL片段</th><th>类型</th><th>时间</th><th>操作</th></tr></thead><tbody>`;
+        let html = `<div class='feedback-card-list'>`;
         data.data.forEach(item => {
-            html += `<tr>
-                <td style='max-width:180px;word-break:break-all;'>${item.question ? item.question : ''}</td>
-                <td style='max-width:260px;word-break:break-all;'><pre style='margin:0;font-size:0.95em;'>${item.sql ? item.sql : ''}</pre></td>
-                <td>${item.type || ''}</td>
-                <td style='font-size:0.95em;'>${item.time ? item.time.replace('T',' ').replace(/\..*$/, '') : ''}</td>
-                <td><button class='btn btn-danger btn-sm' onclick="deleteFeedback('${item.time}')"><span class='icon-trash'>🗑️</span>撤销</button></td>
-            </tr>`;
+            html += `<div class='feedback-card'>
+                <div class='feedback-main'>
+                    <div class='feedback-question' title='${item.question ? item.question.replace(/'/g, "&apos;") : ''}'>${item.question ? item.question : ''}</div>
+                    <div class='feedback-sql' title='${item.sql ? item.sql.replace(/'/g, "&apos;") : ''}'>${item.sql ? item.sql : ''}</div>
+                </div>
+                <div class='feedback-meta'>
+                    <span class='feedback-type'>${item.type || ''}</span>
+                    <span class='feedback-time' data-time='${item.time || ''}'>${item.time ? item.time.replace('T',' ').replace(/\..*$/, '') : ''}</span>
+                    <button class='btn btn-danger btn-sm' onclick="deleteFeedback('${item.time}')"><span class='icon-trash'>🗑️</span>撤销</button>
+                </div>
+            </div>`;
         });
-        html += '</tbody></table>';
+        html += '</div>';
         listDiv.innerHTML = html;
+        // 时间友好化
+        document.querySelectorAll('.feedback-time').forEach(function(span){
+            const t = span.getAttribute('data-time');
+            if(t){
+                span.innerText = friendlyTime(t);
+            }
+        });
     });
 }
 function closeFeedbackHistory() {
@@ -682,6 +693,17 @@ document.getElementById('add-rule-btn').onclick = async function() {
         alert('新增失败');
     }
 };
+// 时间友好化函数
+function friendlyTime(isoStr) {
+    const t = new Date(isoStr.replace(/-/g,'/'));
+    const now = new Date();
+    const diff = (now-t)/1000;
+    if(diff<60) return '刚刚';
+    if(diff<3600) return Math.floor(diff/60)+'分钟前';
+    if(diff<86400) return Math.floor(diff/3600)+'小时前';
+    if(diff<2592000) return Math.floor(diff/86400)+'天前';
+    return isoStr.replace('T',' ').replace(/\..*$/, '');
+}
 </script>
 </body>
 </html>
