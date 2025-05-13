@@ -134,7 +134,7 @@ async def fix_sql_manual(sql: str = Form(...), error_message: str = Form(...)):
 async def generate_sql(question: str = Form(...)):
     try:
         sql = vn.generate_sql(question)
-        sql_with_prefix = f"%%sql\n{sql.strip()}"
+        sql_with_prefix = f"%%sql\nEXPLAIN\n{sql.strip()}"
         LAST_SQL['sql'] = sql_with_prefix
         return {"success": True, "sql": sql_with_prefix}
     except Exception as e:
@@ -230,6 +230,7 @@ async def optimize_sql_with_rag(
 - 只做必要的修正，避免一刀切。
 - 如果SQL本身没问题但数据异常，请考虑是否需要加过滤、去重、类型转换等。
 - 如果SQL有语法或逻辑错误，请直接修正。
+- 【性能要求】所有JOIN/LEFT JOIN都必须加分区字段（如timed = 当前日期）过滤，避免全表扫描。
 【数据库结构和字段说明】
 {rag_context}
 

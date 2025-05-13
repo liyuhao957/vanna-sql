@@ -32,6 +32,7 @@ XL/
     table_docs/             # 表结构文档
     attribute_docs/         # 属性说明文档
     business_docs/          # 业务逻辑文档
+      vanna_sql_business_zh.txt  # Vanna SQL业务知识文档（纯txt），包含字段定义、业务关系、SQL生成与优化规则及性能边界，供模型训练和业务理解参考
   
   examples/                 # SQL示例
     sql_examples/           # 各类SQL示例

@@ -231,7 +231,8 @@
                                 <label for="opt-sql" class="form-label">原始SQL：</label>
                                 <textarea class="form-control mb-2" id="opt-sql" rows="3" placeholder="自动填充或粘贴原始SQL"></textarea>
                                 <label for="opt-result" class="form-label">实际查询结果（可选）：</label>
-                                <textarea class="form-control mb-2" id="opt-result" rows="3" placeholder="可粘贴部分查询结果或留空"></textarea>
+                                <textarea class="form-control mb-2" id="opt-result" rows="6" placeholder="可直接粘贴数据库表格内容，支持Tab/空格/逗号分隔" oninput="renderResultPreviewTable()"></textarea>
+                                <div id="result-preview-table" class="mb-2"></div>
                                 <label for="opt-intent" class="form-label">真实需求描述（必填）：</label>
                                 <textarea class="form-control" id="opt-intent" rows="3" placeholder="请描述你想要的结果，例如：每个省份的用户数"></textarea>
                             </div>
@@ -714,6 +715,40 @@ function friendlyTime(isoStr) {
     if(diff<2592000) return Math.floor(diff/86400)+'天前';
     return isoStr.replace('T',' ').replace(/\..*$/, '');
 }
+function renderResultPreviewTable() {
+    const text = document.getElementById('opt-result').value;
+    const tableDiv = document.getElementById('result-preview-table');
+    if (!text.trim()) { tableDiv.innerHTML = ''; return; }
+    const lines = text.split(/\r?\n/).filter(line=>line.trim().length>0);
+    // 智能分隔符检测
+    let delimiter = '\t';
+    if (lines[0].indexOf('\t') > -1) {
+        delimiter = '\t';
+    } else if (lines[0].indexOf(',') > -1) {
+        delimiter = ',';
+    } else if (lines[0].indexOf('，') > -1) {
+        delimiter = '，';
+    } else {
+        delimiter = /\s{2,}/; // 多个空格
+    }
+    const rows = lines.map(line => delimiter instanceof RegExp ? line.split(delimiter) : line.split(delimiter));
+    const maxCols = Math.max(...rows.map(r=>r.length));
+    let html = '<div style="overflow-x:auto;"><table class="table table-bordered table-sm result-preview-table"><tbody>';
+    for(let i=0;i<rows.length;i++){
+        html += '<tr>';
+        for(let j=0;j<maxCols;j++){
+            const cell = rows[i][j]!==undefined ? rows[i][j] : '';
+            html += `<td>${cell}</td>`;
+        }
+        html += '</tr>';
+    }
+    html += '</tbody></table></div>';
+    tableDiv.innerHTML = html;
+}
+document.addEventListener('DOMContentLoaded', function(){
+    renderResultPreviewTable();
+    document.getElementById('opt-result').addEventListener('input', renderResultPreviewTable);
+});
 </script>
 </body>
 </html>

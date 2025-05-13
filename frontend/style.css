@@ -146,7 +146,7 @@ pre {
   font-size: 15px;
   margin-right: 2px;
   vertical-align: -2px;
-}
+} 
 
 /* 反馈历史卡片美化 */
 .feedback-card-list {
@@ -255,5 +255,84 @@ pre {
   }
   .feedback-card-list {
     max-height: 45vh;
+  }
+}
+
+/* 可编辑结果表格美化 */
+.result-edit-table {
+  min-width: 600px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(60,72,88,0.06);
+  font-size: 0.98rem;
+  margin-bottom: 0;
+}
+.result-edit-table td {
+  padding: 2px 6px;
+  border: 1px solid #e3eafc;
+  background: #fafcff;
+}
+.result-edit-table input[type='text'] {
+  border: none;
+  background: transparent;
+  width: 100%;
+  padding: 2px 4px;
+  font-size: 0.98rem;
+  color: #263159;
+  outline: none;
+  box-shadow: none;
+}
+.result-edit-table input[type='text']:focus {
+  background: #e3eafc;
+  border-radius: 4px;
+}
+@media (max-width: 700px) {
+  .result-edit-table {
+    min-width: 400px;
+    font-size: 0.93rem;
+  }
+}
+
+/* 实际查询结果textarea美化 */
+#opt-result {
+  font-family: 'Fira Mono', 'Consolas', 'Menlo', monospace;
+  font-size: 1.02rem;
+  background: #fafcff;
+  border-radius: 6px;
+  min-height: 120px;
+  resize: vertical;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+/* 结果预览表格美化 */
+.result-preview-table {
+  min-width: 600px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(60,72,88,0.06);
+  font-size: 0.98rem;
+  margin-bottom: 0;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.result-preview-table td {
+  padding: 4px 10px;
+  border: 1px solid #e3eafc;
+  background: #fafcff;
+  white-space: pre-wrap;
+}
+.result-preview-table tr:nth-child(1) td {
+  background: #e3f2fd;
+  font-weight: 600;
+  color: #1976d2;
+}
+.result-preview-table tr:nth-child(even):not(:first-child) td {
+  background: #f5f7fa;
+}
+@media (max-width: 700px) {
+  .result-preview-table {
+    min-width: 400px;
+    font-size: 0.93rem;
   }
 } 

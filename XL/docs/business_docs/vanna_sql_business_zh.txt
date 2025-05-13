@@ -1,0 +1,20 @@
+【字段定义】
+userId：每个设备/用户的唯一标识。一个userId可以对应多个launchId。
+launchId：每次App启动时生成，属于唯一的userId。每个launchId在进入App时会自动生成config和info事件。
+config/info事件：每个launchId在进入App时自动生成，用于标记该次启动（launchId）的有效性。无论用户在一天内多次启动，还是跨天启动，每次启动都会生成新的launchId及其对应的config和info事件。
+
+【业务关系】
+userId与launchId是一对多关系。
+每个launchId在进入App时会生成config和info事件。
+
+【SQL生成与优化规则】
+所有JOIN/LEFT JOIN/EXISTS/NOT EXISTS子查询，必须包含分区字段（如timed）的过滤，避免全表扫描。
+查询和关联时，务必使用分区字段（如timed）限制时间范围。
+对于高消耗操作（如全局唯一/排除），如有可能，优先使用离线聚合或黑名单表。
+合理使用DISTINCT、JOIN、EXISTS/NOT EXISTS等SQL语法。
+复杂排除场景，建议使用带分区字段过滤的NOT EXISTS子查询。
+
+【SQL业务边界与性能要求】
+针对全局唯一/排除（如launchId在全表无send2事件），需平衡业务准确性与SQL性能。
+如有可能，仅查询最近N天数据，或使用离线聚合/黑名单表。
+所有SQL必须包含分区字段过滤，防止性能问题。 
